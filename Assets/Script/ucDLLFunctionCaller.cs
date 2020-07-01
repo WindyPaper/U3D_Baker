@@ -24,6 +24,42 @@ public struct ucCyclesInitOptions
 
 }
 
+[StructLayout(LayoutKind.Sequential)]
+unsafe struct shvector2
+{
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
+    public fixed float v[4]; //4
+};
+
+[StructLayout(LayoutKind.Sequential)]
+unsafe struct shvectorrgb
+{
+    public shvector2 r;
+    public shvector2 g;
+    public shvector2 b;
+};
+
+[StructLayout(LayoutKind.Sequential)]
+unsafe struct GatheredLightSample
+{
+    public shvectorrgb SHVector;
+    public float SHCorrection;
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
+    public fixed float IncidentLighting[3];
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
+    public fixed float SkyOcclusion[3];
+    public float AverageDistance;
+    public float NumBackfaceHits;
+};
+
+unsafe struct OutputLightMapData
+{
+    public String name;
+    public int width;
+    public int height;
+    public GatheredLightSample[] outdata;
+}
+
 public class ucDLLFunctionCaller
 {
     static IntPtr nativeLibraryPtr;
@@ -73,33 +109,7 @@ public class ucDLLFunctionCaller
 
     delegate void ImportSkyLightCubemap(int theta_step_num, int phi_step_num, float[] upper_data, float[] lower_data);
 
-    [StructLayout(LayoutKind.Sequential)]
-    unsafe struct shvector2
-    {
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
-        public fixed float v[4]; //4
-    };
-
-    [StructLayout(LayoutKind.Sequential)]
-    unsafe struct shvectorrgb
-    {
-        public shvector2 r;
-        public shvector2 g;
-        public shvector2 b;
-    };
-
-    [StructLayout(LayoutKind.Sequential)]
-    unsafe struct GatheredLightSample
-    {
-        public shvectorrgb SHVector;
-        public float SHCorrection;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
-        public fixed float IncidentLighting[3];
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
-        public fixed float SkyOcclusion[3];
-        public float AverageDistance;
-        public float NumBackfaceHits;
-    };
+    
 
     delegate void CalculateIndirectLightingTextureMapping(int texels_num, int size_x, int size_y, int sample_num, float[] world_pos, float[] world_normal, float[] texel_radius_map, GatheredLightSample[] out_lightmap_data);
 
@@ -118,27 +128,62 @@ public class ucDLLFunctionCaller
         this.thread_dispatcher = thread_dispatcher;
     }    
 
-    public void LoadDLLAndInitCycles()
+    public void LoadDLLAndInit()
     {
         LoadDLL();
 
-        //InitCycles(op);
-        InitLightMass();
-
-        SendLightData();
-        //SendAllBakeLightData();
+        InitLightMass();      
 
         SendSkyData();
 
         SendAllMeshToCycles();
 
-        SendRadiosityCacheData();
+        SendRadiosityCacheData();                
+    }
 
+    public void StartBaking()
+    {
+        //indirected lighting
+        SendIndirectedLightData();
         RunRadiosityPass();
-
         CalculateIndirectedLighting();
-        //CalculateDirectedLighting();
 
+        //direct lighting
+        SendAllBakeLightData();
+        CalculateDirectedLighting();        
+
+        ExportQuanLMData();
+    }
+
+    unsafe public void ExportQuanLMData()
+    {
+        List<OutputLightMapData> out_lm_data_list = new List<OutputLightMapData>();
+
+        for(int i = 0; i < ucBakingData.indirected_lighting_baking_data.Count; ++i)
+        {
+            OutputLightMapData data = new OutputLightMapData();
+            data.name = ucBakingData.indirected_lighting_baking_data[i].name;
+            data.width = ucBakingData.indirected_lighting_baking_data[i].width;
+            data.height = ucBakingData.indirected_lighting_baking_data[i].height;
+
+            data.outdata = ucBakingData.indirected_lighting_baking_data[i].outdata;
+            for(int j = 0; j < data.outdata.Length; ++j)
+            {
+                data.outdata[j].IncidentLighting[0] += ucBakingData.direct_lighting_baking_data[i].outdata[j].IncidentLighting[0];
+                data.outdata[j].IncidentLighting[1] += ucBakingData.direct_lighting_baking_data[i].outdata[j].IncidentLighting[1];
+                data.outdata[j].IncidentLighting[2] += ucBakingData.direct_lighting_baking_data[i].outdata[j].IncidentLighting[2];
+
+                //Add SH
+            }
+
+            out_lm_data_list.Add(data);
+        }
+
+        //Debug.LogFormat("Output list = {0}", out_lm_data_list.Count);
+        foreach (OutputLightMapData out_data in out_lm_data_list)
+        {
+            QuantifierResult(out_data.outdata, out_data.width, out_data.height, out_data.name);
+        }
     }
 
     public void SendSkyData()
@@ -159,10 +204,6 @@ public class ucDLLFunctionCaller
     {
         LogCb lcb = new LogCb(LightmassLogCb);
         ucNative.Invoke_Void<SetLogHandler>(nativeLibraryPtr, lcb);
-
-        //int max_lm_num = ucExportMesh.GetAllObjectsInScene().Count;
-        //Debug.LogFormat("max light map num = {0}", max_lm_num);
-
 
         ucNative.Invoke_Void<SetGlobalSamplingParameters>(nativeLibraryPtr, 1000.0f);
     }
@@ -241,15 +282,7 @@ public class ucDLLFunctionCaller
                 lm_index_array_list.ToArray());
 
         EditorUtility.ClearProgressBar();
-    }
-
-    unsafe struct OutputLightMapData
-    {
-        public String name;
-        public int width;
-        public int height;
-        public GatheredLightSample[] outdata;
-    }
+    }    
 
     unsafe public void CalculateIndirectedLighting()
     {
@@ -286,12 +319,6 @@ public class ucDLLFunctionCaller
                 tmp_out_lm_data
             };
             ucNative.Invoke_Void<CalculateIndirectLightingTextureMapping>(nativeLibraryPtr, param);
-            //GatheredLightSample[] out_lm_data = (GatheredLightSample[])param[7];
-
-            //foreach (GatheredLightSample vv in tmp_out_lm_data)
-            //{
-            //    Debug.LogFormat("SH r g b =  {0}, {1}, {2}", vv.SHVector.r.v[0], vv.SHVector.r.v[1], vv.SHVector.r.v[2]);
-            //}
 
             OutputLightMapData lm_data = new OutputLightMapData();
             lm_data.name = obj.name;
@@ -304,12 +331,14 @@ public class ucDLLFunctionCaller
 
         //ucNative.Invoke_Void<SetTotalTexelsForProgressReport>(nativeLibraryPtr, texel_num);
 
-        Debug.LogFormat("Output list = {0}", out_lm_data_list.Count);
-        foreach(OutputLightMapData out_data in out_lm_data_list)
-        {
-            QuantifierResult(out_data.outdata, out_data.width, out_data.height, out_data.name);
-        }        
-        
+        ucBakingData.indirected_lighting_baking_data = out_lm_data_list;
+
+        //Debug.LogFormat("Output list = {0}", out_lm_data_list.Count);
+        //foreach(OutputLightMapData out_data in out_lm_data_list)
+        //{
+        //    QuantifierResult(out_data.outdata, out_data.width, out_data.height, out_data.name);
+        //}        
+
     }
 
     unsafe public void CalculateDirectedLighting()
@@ -360,10 +389,13 @@ public class ucDLLFunctionCaller
         //ucNative.Invoke_Void<SetTotalTexelsForProgressReport>(nativeLibraryPtr, texel_num);
 
         Debug.LogFormat("Output list = {0}", out_lm_data_list.Count);
-        foreach (OutputLightMapData out_data in out_lm_data_list)
-        {
-            QuantifierResult(out_data.outdata, out_data.width, out_data.height, out_data.name);
-        }
+
+        ucBakingData.direct_lighting_baking_data = out_lm_data_list;
+
+        //foreach (OutputLightMapData out_data in out_lm_data_list)
+        //{
+        //    QuantifierResult(out_data.outdata, out_data.width, out_data.height, out_data.name);
+        //}
 
     }
 
@@ -429,9 +461,9 @@ public class ucDLLFunctionCaller
         ucNative.Invoke_Void<SetTotalTexelsForProgressReport>(nativeLibraryPtr, texel_num);
     }
 
-    public void SendLightData()
+    public void SendIndirectedLightData()
     {
-        ExportPunctualLight export_lights = ucExportLights.Export();
+        ExportPunctualLight export_lights = ucExportLights.ExportIndirectedLights();
 
         ucNative.Invoke_Void<ImportPunctualLights>(nativeLibraryPtr, export_lights.DirLightNum, export_lights.DirLights,
             export_lights.PointLightNum, export_lights.PointLights,
@@ -440,7 +472,7 @@ public class ucDLLFunctionCaller
 
     public void SendAllBakeLightData()
     {
-        ExportPunctualLight export_lights = ucExportLights.Export();
+        ExportPunctualLight export_lights = ucExportLights.ExportStaticBakedLights();
 
         ucNative.Invoke_Void<ImportDirectLights>(nativeLibraryPtr, export_lights.DirLightNum, export_lights.DirLights,
             export_lights.PointLightNum, export_lights.PointLights,
@@ -450,67 +482,12 @@ public class ucDLLFunctionCaller
     public void RunRadiosityPass()
     {
         ucNative.Invoke_Void<RunRadiosity>(nativeLibraryPtr, 3, 8);
-    }
-
-    public void BakeLightMap()
-    {
-        //ucNative.Invoke<int, bake_lightmap>(nativeLibraryPtr);
-    }
-
-    public void InteractiveRenderCb(IntPtr image_array, [MarshalAs(UnmanagedType.I4)]int w, [MarshalAs(UnmanagedType.I4)]int h, int type, float progress)
-    {
-        //Debug.Log("Result Interactive Image size = " + (w * h));        
-        //int image_byte_size = w * h * 2 * 4;
-        //byte[] native_image_array = new byte[image_byte_size];              
-
-        //Marshal.Copy(image_array, native_image_array, 0, image_byte_size);
-
-        //for (int i = 0; i < 3000; ++i)
-        //{            
-        //    native_image_array[i] = 0;
-        //}
-
-        ////Debug.Log("progress = " + progress);
-        //void local_create_tex_func()
-        //{
-        //    if (ucPreviewRenderWindow.rt_texture == null ||
-        //        ucPreviewRenderWindow.rt_texture.width != w ||
-        //        ucPreviewRenderWindow.rt_texture.height != h)
-        //    {
-        //        ucPreviewRenderWindow.rt_texture = new Texture2D(w, h, TextureFormat.RGBAHalf, false);
-        //    }
-        //    ucPreviewRenderWindow.rt_texture.SetPixelData(native_image_array, 0, 0);
-        //    ucPreviewRenderWindow.rt_texture.Apply();
-        //    ucInteractivePTEditorWindow.render_progress = progress;
-        //};
-
-        //thread_dispatcher.RunOnMainThread(local_create_tex_func);
     } 
     
     public void LightmassLogCb(String str)
     {
         Debug.Log(str);
-    }   
-
-    //public ThreadStart InteractiveRenderStart(ucUnityRenderOptions ops)
-    //{
-    //    //return () =>
-    //    //{
-    //    //    RenderImageCb cb = new RenderImageCb(InteractiveRenderCb);
-    //    //    ucNative.Invoke<int, interactive_pt_rendering>(nativeLibraryPtr, ops, cb);
-    //    //};
-    //}
-
-    //public void SendLightsToCycles()
-    //{
-        //ucLightData[] light_datas = ucExportLights.Export();
-
-        //foreach(ucLightData lds in light_datas)
-        //{            
-        //    ucNative.Invoke<int, unity_add_light>(nativeLibraryPtr, lds);
-        //}
-    //}
-    
+    }    
 
     public static void UnloadDLL()
     {
@@ -525,7 +502,5 @@ public class ucDLLFunctionCaller
         {
             nativeLibraryPtr = IntPtr.Zero;
         }
-
-
     }    
 }

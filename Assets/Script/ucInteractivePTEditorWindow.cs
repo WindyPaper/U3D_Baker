@@ -95,7 +95,8 @@ public class ucInteractivePTEditorWindow : ScriptableWizard
             dll_function_caller = new ucDLLFunctionCaller(thread_dispatcher);
         }
 
-        dll_function_caller.LoadDLLAndInitCycles();               
+        dll_function_caller.LoadDLLAndInit();
+        dll_function_caller.StartBaking();
 
         //Thread t = new Thread(dll_function_caller.InteractiveRenderStart(render_options));
         //t.Start();        

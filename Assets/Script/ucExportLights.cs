@@ -75,12 +75,8 @@ public struct ExportPunctualLight
 public class ucExportLights
 {
 
-    static public ExportPunctualLight Export()
+    static ExportPunctualLight GetLightData(ref Light[] lights)
     {
-        Light[] lights = GameObject.FindObjectsOfType(typeof(Light)) as Light[];
-
-        //ucLightData[] light_datas = new ucLightData[lights.Length];
-
         List<DirectionalLight> dir_light_list = new List<DirectionalLight>();
         List<PointLight> point_light_list = new List<PointLight>();
         List<SpotLight> spot_light_list = new List<SpotLight>();
@@ -91,15 +87,8 @@ public class ucExportLights
         //int index = 0;
         foreach (Light l in lights)
         {
-            //string name = l.name;
-            ////Debug.Log("light name = " + name);
-            //float radius = 0.01f;
-            //float light_value_scale = 1.0f;
-            //float angle = 0.0f;
             if (l.type == LightType.Point)
             {
-                //radius = 0.3f;// l.range;
-                //light_value_scale = l.range * 1.5f;
                 point_light_num++;
 
                 PointLight point_l = new PointLight();
@@ -120,10 +109,6 @@ public class ucExportLights
             }
             else if (l.type == LightType.Spot)
             {
-                //radius = 0.1f;
-                //light_value_scale = l.range * 10;
-                //angle = l.spotAngle;
-                //Debug.Log("light angle = " + angle);
                 spot_light_num++;
 
                 SpotLight spot_l = new SpotLight();
@@ -139,8 +124,8 @@ public class ucExportLights
                 spot_l.WorldPosition[2] = pos.z;
 
                 spot_l.Radius = l.range * 100;
-                spot_l.CosOuterConeAngle = Mathf.Cos(Mathf.Deg2Rad * (l.spotAngle/2.0f));
-                spot_l.CosInnerConeAngle = Mathf.Cos(Mathf.Deg2Rad * (l.innerSpotAngle/2.0f));
+                spot_l.CosOuterConeAngle = Mathf.Cos(Mathf.Deg2Rad * (l.spotAngle / 2.0f));
+                spot_l.CosInnerConeAngle = Mathf.Cos(Mathf.Deg2Rad * (l.innerSpotAngle / 2.0f));
 
                 spot_l.Direction = new float[3];
                 Vector3 dir = Vector3.Normalize(ucCoordToUE.F3(l.transform.forward));
@@ -155,7 +140,7 @@ public class ucExportLights
             {
                 //light_value_scale = l.areaSize.x * l.areaSize.y;
             }
-            else if(l.type == LightType.Directional)
+            else if (l.type == LightType.Directional)
             {
                 dir_light_num++;
 
@@ -173,7 +158,7 @@ public class ucExportLights
                 dir_l.Direction[2] = dir.z;
 
                 dir_light_list.Add(dir_l);
-            }            
+            }
         }
 
         ExportPunctualLight ret_light_data;
@@ -186,5 +171,37 @@ public class ucExportLights
         ret_light_data.PointLights = point_light_list.ToArray();
 
         return ret_light_data;
+    }
+
+    static public ExportPunctualLight ExportIndirectedLights()
+    {
+        Light[] lights = GameObject.FindObjectsOfType(typeof(Light)) as Light[];
+        List<Light> not_realtime_lights = new List<Light>();
+
+        foreach(Light l in lights)
+        {
+            if(l.lightmapBakeType != LightmapBakeType.Realtime)
+            {
+                not_realtime_lights.Add(l);
+            }
+        }
+        Light[] not_realtime_lights_array = not_realtime_lights.ToArray();
+        return GetLightData(ref not_realtime_lights_array);
+    }
+
+    static public ExportPunctualLight ExportStaticBakedLights()
+    {
+        Light[] lights = GameObject.FindObjectsOfType(typeof(Light)) as Light[];
+        List<Light> static_baked_lights = new List<Light>();
+
+        foreach (Light l in lights)
+        {
+            if (l.lightmapBakeType == LightmapBakeType.Baked)
+            {
+                static_baked_lights.Add(l);
+            }
+        }
+        Light[] static_baked_lights_array = static_baked_lights.ToArray();
+        return GetLightData(ref static_baked_lights_array);
     }
 }

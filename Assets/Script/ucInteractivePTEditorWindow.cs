@@ -31,27 +31,13 @@ public class ucInteractivePTEditorWindow : ScriptableWizard
     {
         if(window_inst == null)
         {
-            window_inst = ScriptableWizard.DisplayWizard<ucInteractivePTEditorWindow>("RayTracingPreview", "Yes", "Cancel");
+            window_inst = ScriptableWizard.DisplayWizard<ucInteractivePTEditorWindow>("Baker", "Yes", "Cancel");
             window_inst.autoRepaintOnSceneChange = true;
         }
         window_inst.Focus();
     }
 
-    bool interactive_rendering = false;
-    public static bool select_sceneview_active_camera = true;
-    public static bool enable_denoise = true;
-    public static Camera cam = null;
-    //bool pressed = false;
-    //ucRenderDeviceOptions render_device_op;
-    //public static int sample_count = 128;
-    //ucSampleCountOptions sample_count_op;
-    //public static float render_progress = 0.0f;
-
-    //DateTime start_time = System.DateTime.Now;
-    //TimeSpan offset_time;
-
-    //float save_main_camera_far_clip_value = 0.0f;
-
+    bool interactive_rendering = false;    
     public static Cubemap hdr_texture = null;
 
     ucDLLFunctionCaller dll_function_caller = null;
@@ -61,7 +47,7 @@ public class ucInteractivePTEditorWindow : ScriptableWizard
     {
 
         //Start Btn, needed to add bottom after all parameters have inited.
-        if (interactive_rendering != GUILayout.Toggle(interactive_rendering, new GUIContent("Start", "Ray tracing result will be outputed to GameView"), "Button"))
+        if (interactive_rendering != GUILayout.Toggle(interactive_rendering, new GUIContent("Start", "Start baking"), "Button"))
         {
             interactive_rendering = !interactive_rendering;
             if (interactive_rendering)
@@ -97,9 +83,6 @@ public class ucInteractivePTEditorWindow : ScriptableWizard
 
         dll_function_caller.LoadDLLAndInit();
         dll_function_caller.StartBaking();
-
-        //Thread t = new Thread(dll_function_caller.InteractiveRenderStart(render_options));
-        //t.Start();        
     }
 
     void InteractiveRenderingEnd()
@@ -118,22 +101,15 @@ public class ucInteractivePTEditorWindow : ScriptableWizard
     }
 
     void OnWizardUpdate()
-    {
-        
+    {        
     }
 
     void OnHierarchyChange()
     {
-        //Debug.Log("OnHierarchyChange");
     }
 
     public void Update()
     {
-        //if (thread_dispatcher != null)
-        //{
-        //    thread_dispatcher.Update();
-        //}
-
         Repaint();
     }
 

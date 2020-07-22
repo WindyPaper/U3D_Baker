@@ -29,6 +29,18 @@ unsafe struct shvector2
 {
     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
     public fixed float v[4]; //4
+
+    public static shvector2 operator +(shvector2 a, shvector2 b)
+    {
+        shvector2 ret = new shvector2();
+
+        ret.v[0] = a.v[0] + a.v[0];
+        ret.v[1] = a.v[1] + a.v[1];
+        ret.v[2] = a.v[2] + a.v[2];
+        ret.v[3] = a.v[3] + a.v[3];
+
+        return ret;
+    }
 };
 
 [StructLayout(LayoutKind.Sequential)]
@@ -37,6 +49,17 @@ unsafe struct shvectorrgb
     public shvector2 r;
     public shvector2 g;
     public shvector2 b;
+
+    public static shvectorrgb operator +(shvectorrgb a, shvectorrgb b)
+    {
+        shvectorrgb ret = new shvectorrgb();
+
+        ret.r = a.r + b.r;
+        ret.g = a.g + b.g;
+        ret.b = a.b + b.b;
+
+        return ret;
+    }
 };
 
 [StructLayout(LayoutKind.Sequential)]
@@ -174,6 +197,8 @@ public class ucDLLFunctionCaller
                 data.outdata[j].IncidentLighting[2] += ucBakingData.direct_lighting_baking_data[i].outdata[j].IncidentLighting[2];
 
                 //Add SH
+                data.outdata[j].SHVector += ucBakingData.direct_lighting_baking_data[i].outdata[j].SHVector;
+                data.outdata[j].SHCorrection += ucBakingData.direct_lighting_baking_data[i].outdata[j].SHCorrection;
             }
 
             out_lm_data_list.Add(data);

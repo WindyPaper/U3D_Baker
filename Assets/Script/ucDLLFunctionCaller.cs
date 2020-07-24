@@ -34,10 +34,10 @@ unsafe struct shvector2
     {
         shvector2 ret = new shvector2();
 
-        ret.v[0] = a.v[0] + a.v[0];
-        ret.v[1] = a.v[1] + a.v[1];
-        ret.v[2] = a.v[2] + a.v[2];
-        ret.v[3] = a.v[3] + a.v[3];
+        ret.v[0] = a.v[0] + b.v[0];
+        ret.v[1] = a.v[1] + b.v[1];
+        ret.v[2] = a.v[2] + b.v[2];
+        ret.v[3] = a.v[3] + b.v[3];
 
         return ret;
     }
@@ -197,8 +197,10 @@ public class ucDLLFunctionCaller
                 data.outdata[j].IncidentLighting[2] += ucBakingData.direct_lighting_baking_data[i].outdata[j].IncidentLighting[2];
 
                 //Add SH
-                data.outdata[j].SHVector += ucBakingData.direct_lighting_baking_data[i].outdata[j].SHVector;
+                data.outdata[j].SHVector = data.outdata[j].SHVector + ucBakingData.direct_lighting_baking_data[i].outdata[j].SHVector;
                 data.outdata[j].SHCorrection += ucBakingData.direct_lighting_baking_data[i].outdata[j].SHCorrection;
+                //data.outdata[j].SHVector.r.v[0] = 1.0f;
+                //data.outdata[j].SHCorrection = 1.0f;
             }
 
             out_lm_data_list.Add(data);
@@ -440,7 +442,7 @@ public class ucDLLFunctionCaller
                 {
                     DirLuma[sh_i] = 0.30f * InGatheredLightSample.SHVector.r.v[sh_i];
                     DirLuma[sh_i] += 0.59f * InGatheredLightSample.SHVector.g.v[sh_i];
-                    DirLuma[sh_i] += 0.11f * InGatheredLightSample.SHVector.b.v[sh_i];
+                    DirLuma[sh_i] += 0.11f * InGatheredLightSample.SHVector.b.v[sh_i];                    
 
                     // Lighting is already in IncidentLighting. Force directional SH as applied to a flat normal map to be 1 to get purely directional data.
                     DirLuma[sh_i] *= DirCorrection / (float)Math.PI;
@@ -448,9 +450,19 @@ public class ucDLLFunctionCaller
                 float ColorScale = DirLuma[0];
 
                 tex.SetPixel(j, i, new Color(
-                    InGatheredLightSample.IncidentLighting[0] * ColorScale, 
-                    InGatheredLightSample.IncidentLighting[1] * ColorScale, 
+                    InGatheredLightSample.IncidentLighting[0] * ColorScale,
+                    InGatheredLightSample.IncidentLighting[1] * ColorScale,
                     InGatheredLightSample.IncidentLighting[2] * ColorScale));
+
+                //tex.SetPixel(j, i, new Color(
+                //    InGatheredLightSample.IncidentLighting[0],
+                //    InGatheredLightSample.IncidentLighting[1],
+                //    InGatheredLightSample.IncidentLighting[2]));
+
+                //tex.SetPixel(j, i, new Color(
+                //    ColorScale,
+                //    ColorScale,                    
+                //    ColorScale));
             }
         }
         tex.Apply();

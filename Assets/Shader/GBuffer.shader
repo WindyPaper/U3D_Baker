@@ -88,9 +88,9 @@ Shader "Unlit/GBuffer"
 			{
 				// sample the texture
 				float4 col = tex2D(_MainTex, i.uv);
-				GRT0 = col;
-				GRT1 = i.normal;
-				GRT2 = i.world_pos;
+				GRT0 = float4(col.rgb, 1.0f);
+				GRT1 = float4(i.normal.rgb, 1.0f);
+				GRT2 = float4(i.world_pos.rgb, 1.0f);
 				//GRTDepth = 0.5;
 			}
 			ENDCG

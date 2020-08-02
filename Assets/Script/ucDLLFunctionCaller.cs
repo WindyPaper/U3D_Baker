@@ -146,6 +146,8 @@ public class ucDLLFunctionCaller
 
     delegate void CalculateDirectLightingAndShadow(int texels_num, int size_x, int size_y, int sample_num, float[] world_pos, float[] world_normal, float[] texel_radius_map, GatheredLightSample[] out_lightmap_data);
 
+    delegate void CalculateAllLightingAndShadow(int texels_num, int size_x, int size_y, int sample_num, float[] world_pos, float[] world_normal, float[] texel_radius_map, GatheredLightSample[] out_lightmap_data);    
+
     public ucDLLFunctionCaller(ucThreadDispatcher thread_dispatcher)
     {
         this.thread_dispatcher = thread_dispatcher;
@@ -166,15 +168,9 @@ public class ucDLLFunctionCaller
 
     public void StartBaking()
     {
-        //indirected lighting
-        SendIndirectedLightData();
+        SendNeedBakedLightData();
         RunRadiosityPass();
-        CalculateIndirectedLighting();
-
-        //direct lighting
-        SendAllBakeLightData();
-        CalculateDirectedLighting();        
-
+        CalculateAllBakedLighting();
         ExportQuanLMData();
     }
 
@@ -203,7 +199,8 @@ public class ucDLLFunctionCaller
                 //data.outdata[j].SHCorrection = 1.0f;
             }
 
-            out_lm_data_list.Add(data);
+            //out_lm_data_list.Add(data);
+            out_lm_data_list.Add(ucBakingData.direct_lighting_baking_data[i]);
         }
 
         //Debug.LogFormat("Output list = {0}", out_lm_data_list.Count);
@@ -426,6 +423,64 @@ public class ucDLLFunctionCaller
 
     }
 
+    unsafe public void CalculateAllBakedLighting()
+    {
+        List<LightmassBakerData> datas = ucExportMesh.GetBakerData();
+
+        //ucNative.Invoke_Void<PreallocRadiositySurfaceCachePointers>(nativeLibraryPtr, datas.Count);
+
+        List<OutputLightMapData> out_lm_data_list = new List<OutputLightMapData>();
+
+        //int i = 0;
+        //int texel_num = 0;
+        foreach (LightmassBakerData obj in datas)
+        {
+            int texel_num = obj.size_x * obj.size_y;
+
+
+            float[] texel_radius = new float[texel_num];
+            for (int i = 0; i < texel_num; ++i)
+            {
+                texel_radius[i] = 0.1f;
+            }
+
+            GatheredLightSample[] tmp_out_lm_data = new GatheredLightSample[texel_num];
+
+            object[] param = new object[]
+            {
+                texel_num,
+                obj.size_x,
+                obj.size_y,
+                32,
+                obj.world_pos_map,
+                obj.world_normal_map,
+                texel_radius,
+                tmp_out_lm_data
+            };
+            ucNative.Invoke_Void<CalculateAllLightingAndShadow>(nativeLibraryPtr, param);
+
+            OutputLightMapData lm_data = new OutputLightMapData();
+            lm_data.name = obj.name;
+            lm_data.width = obj.size_x;
+            lm_data.height = obj.size_y;
+            lm_data.outdata = tmp_out_lm_data;
+
+            out_lm_data_list.Add(lm_data);
+        }
+
+        //ucNative.Invoke_Void<SetTotalTexelsForProgressReport>(nativeLibraryPtr, texel_num);
+
+        Debug.LogFormat("Output list = {0}", out_lm_data_list.Count);
+
+        //ucBakingData.direct_lighting_baking_data = out_lm_data_list;
+
+        foreach (OutputLightMapData out_data in out_lm_data_list)
+        {
+            QuantifierResult(out_data.outdata, out_data.width, out_data.height, out_data.name);
+        }
+
+    }
+
     unsafe void QuantifierResult(GatheredLightSample[] ret, int width, int height, String name)
     {
         Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, false, true);
@@ -516,6 +571,15 @@ public class ucDLLFunctionCaller
             export_lights.SpotLightNum, export_lights.SpotLights);
     }
 
+    public void SendNeedBakedLightData()
+    {
+        ExportPunctualLight export_lights = ucExportLights.ExportNeedBakedLights();
+
+        ucNative.Invoke_Void<ImportDirectLights>(nativeLibraryPtr, export_lights.DirLightNum, export_lights.DirLights,
+            export_lights.PointLightNum, export_lights.PointLights,
+            export_lights.SpotLightNum, export_lights.SpotLights);
+    }
+
     public void RunRadiosityPass()
     {
         ucNative.Invoke_Void<RunRadiosity>(nativeLibraryPtr, 3, 8);
@@ -525,6 +589,12 @@ public class ucDLLFunctionCaller
     {
         Debug.Log(str);
     }    
+
+    //lightprobe
+    public void StartLightprobeBaking()
+    {
+
+    }
 
     public static void UnloadDLL()
     {

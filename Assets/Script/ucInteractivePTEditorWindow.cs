@@ -37,8 +37,8 @@ public class ucInteractivePTEditorWindow : ScriptableWizard
         window_inst.Focus();
     }
 
-    bool interactive_rendering = false;    
-    public static Cubemap hdr_texture = null;
+    bool interactive_rendering = false;
+    bool lightprobe_baking = false;
 
     ucDLLFunctionCaller dll_function_caller = null;
     ucThreadDispatcher thread_dispatcher = null;
@@ -47,7 +47,7 @@ public class ucInteractivePTEditorWindow : ScriptableWizard
     {
 
         //Start Btn, needed to add bottom after all parameters have inited.
-        if (interactive_rendering != GUILayout.Toggle(interactive_rendering, new GUIContent("Start", "Start baking"), "Button"))
+        if (interactive_rendering != GUILayout.Toggle(interactive_rendering, new GUIContent("LightMap", "Start baking lightmap"), "Button"))
         {
             interactive_rendering = !interactive_rendering;
             if (interactive_rendering)
@@ -59,6 +59,19 @@ public class ucInteractivePTEditorWindow : ScriptableWizard
             {
                 //Debug.Log("Interactive Stop!");
                 InteractiveRenderingEnd();
+            }
+        }
+
+        if (lightprobe_baking != GUILayout.Toggle(lightprobe_baking, new GUIContent("Light Probe", "Start baking light probe"), "Button"))
+        {
+            lightprobe_baking = !lightprobe_baking;
+            if (lightprobe_baking)
+            {
+                
+            }
+            else
+            {
+                
             }
         }
     }
@@ -90,6 +103,29 @@ public class ucInteractivePTEditorWindow : ScriptableWizard
         if(dll_function_caller != null)
             dll_function_caller.Release();
         dll_function_caller = null;           
+    }
+
+    void LightprobeBakingStart()
+    {
+        if (dll_function_caller == null)
+        {
+            if (thread_dispatcher == null)
+            {
+                thread_dispatcher = ucThreadDispatcher.Initialize();
+            }
+
+            dll_function_caller = new ucDLLFunctionCaller(thread_dispatcher);
+        }
+
+        dll_function_caller.LoadDLLAndInit();
+        //dll_function_caller.StartBaking();
+    }
+
+    void LightprobeBakingEnd()
+    {
+        if (dll_function_caller != null)
+            dll_function_caller.Release();
+        dll_function_caller = null;
     }
 
     void OnDestroy()

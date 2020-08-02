@@ -191,12 +191,15 @@ public static class ucObjectMrt
 
         Texture2D color_tex = toTexture2D(gbuf_tex[0], w);
         color_tex.filterMode = FilterMode.Point;
+        color_tex.wrapMode = TextureWrapMode.Clamp;
         dilate_material.SetTexture("_ColorTex", color_tex);
         Texture2D normal_tex = toTexture2D(gbuf_tex[1], w);
         normal_tex.filterMode = FilterMode.Point;
+        normal_tex.wrapMode = TextureWrapMode.Clamp;
         dilate_material.SetTexture("_NormalTex", normal_tex);
         Texture2D pos_tex = toTexture2D(gbuf_tex[2], w);
         pos_tex.filterMode = FilterMode.Point;
+        pos_tex.wrapMode = TextureWrapMode.Clamp;
         dilate_material.SetTexture("_PosTex", pos_tex);        
         dilate_material.SetVector("_PixelOffset", new Vector4(1.0f/w, 1.0f/h, 0.0f, 0.0f));
         cbr.DrawMesh(mesh, Matrix4x4.identity, dilate_material);

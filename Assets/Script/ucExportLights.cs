@@ -28,6 +28,8 @@ public struct DirectionalLight
     public float[] Color;
     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
     public float[] Direction;
+
+    public int BakeType;
 };
 
 [StructLayout(LayoutKind.Sequential)]
@@ -40,6 +42,8 @@ public struct PointLight
 
     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
     public float[] WorldPosition;
+
+    public int BakeType;
 };
 
 [StructLayout(LayoutKind.Sequential)]
@@ -59,6 +63,8 @@ public struct SpotLight
     public float[] Direction;
 
     public float CosInnerConeAngle;
+
+    public int BakeType;
 };
 
 [StructLayout(LayoutKind.Sequential)]
@@ -105,6 +111,8 @@ public class ucExportLights
                 point_l.WorldPosition[1] = pos.y;
                 point_l.WorldPosition[2] = pos.z;
 
+                point_l.BakeType = (int)l.lightmapBakeType;
+
                 point_light_list.Add(point_l);
             }
             else if (l.type == LightType.Spot)
@@ -133,6 +141,8 @@ public class ucExportLights
                 spot_l.Direction[1] = dir.y;
                 spot_l.Direction[2] = dir.z;
 
+                spot_l.BakeType = (int)l.lightmapBakeType;
+
                 spot_light_list.Add(spot_l);
 
             }
@@ -156,6 +166,8 @@ public class ucExportLights
                 dir_l.Direction[0] = dir.x;
                 dir_l.Direction[1] = dir.y;
                 dir_l.Direction[2] = dir.z;
+
+                dir_l.BakeType = (int)l.lightmapBakeType;
 
                 dir_light_list.Add(dir_l);
             }
@@ -203,5 +215,21 @@ public class ucExportLights
         }
         Light[] static_baked_lights_array = static_baked_lights.ToArray();
         return GetLightData(ref static_baked_lights_array);
+    }
+
+    static public ExportPunctualLight ExportNeedBakedLights()
+    {
+        Light[] lights = GameObject.FindObjectsOfType(typeof(Light)) as Light[];
+        List<Light> not_realtime_lights = new List<Light>();
+
+        foreach (Light l in lights)
+        {
+            if (l.lightmapBakeType != LightmapBakeType.Realtime)
+            {
+                not_realtime_lights.Add(l);
+            }
+        }
+        Light[] not_realtime_lights_array = not_realtime_lights.ToArray();
+        return GetLightData(ref not_realtime_lights_array);
     }
 }

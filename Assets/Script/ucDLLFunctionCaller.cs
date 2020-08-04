@@ -25,7 +25,7 @@ public struct ucCyclesInitOptions
 }
 
 [StructLayout(LayoutKind.Sequential)]
-unsafe struct shvector2
+public unsafe struct shvector2
 {
     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
     public fixed float v[4]; //4
@@ -44,7 +44,31 @@ unsafe struct shvector2
 };
 
 [StructLayout(LayoutKind.Sequential)]
-unsafe struct shvectorrgb
+public unsafe struct shvector3
+{
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 9)]
+    public fixed float v[9];
+
+    public static shvector3 operator +(shvector3 a, shvector3 b)
+    {
+        shvector3 ret = new shvector3();
+
+        ret.v[0] = a.v[0] + b.v[0];
+        ret.v[1] = a.v[1] + b.v[1];
+        ret.v[2] = a.v[2] + b.v[2];
+        ret.v[3] = a.v[3] + b.v[3];
+        ret.v[4] = a.v[4] + b.v[4];
+        ret.v[5] = a.v[5] + b.v[5];
+        ret.v[6] = a.v[6] + b.v[6];
+        ret.v[7] = a.v[7] + b.v[7];
+        ret.v[8] = a.v[8] + b.v[8];
+
+        return ret;
+    }
+};
+
+[StructLayout(LayoutKind.Sequential)]
+public unsafe struct shvectorrgb
 {
     public shvector2 r;
     public shvector2 g;
@@ -53,6 +77,25 @@ unsafe struct shvectorrgb
     public static shvectorrgb operator +(shvectorrgb a, shvectorrgb b)
     {
         shvectorrgb ret = new shvectorrgb();
+
+        ret.r = a.r + b.r;
+        ret.g = a.g + b.g;
+        ret.b = a.b + b.b;
+
+        return ret;
+    }
+};
+
+[StructLayout(LayoutKind.Sequential)]
+public unsafe struct shvectorrgb3
+{
+    public shvector3 r;
+    public shvector3 g;
+    public shvector3 b;
+
+    public static shvectorrgb3 operator +(shvectorrgb3 a, shvectorrgb3 b)
+    {
+        shvectorrgb3 ret = new shvectorrgb3();
 
         ret.r = a.r + b.r;
         ret.g = a.g + b.g;
@@ -82,6 +125,18 @@ unsafe struct OutputLightMapData
     public int height;
     public GatheredLightSample[] outdata;
 }
+
+[StructLayout(LayoutKind.Sequential)]
+unsafe public struct VolumetricLightSample
+{
+    public shvectorrgb3 SHVector;
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
+    public fixed float IncidentLighting[3];
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
+    public fixed float SkyOcclusion[3];
+    public float MinDistance;
+    public float BackfacingHitsFraction;
+};
 
 public class ucDLLFunctionCaller
 {
@@ -146,7 +201,11 @@ public class ucDLLFunctionCaller
 
     delegate void CalculateDirectLightingAndShadow(int texels_num, int size_x, int size_y, int sample_num, float[] world_pos, float[] world_normal, float[] texel_radius_map, GatheredLightSample[] out_lightmap_data);
 
-    delegate void CalculateAllLightingAndShadow(int texels_num, int size_x, int size_y, int sample_num, float[] world_pos, float[] world_normal, float[] texel_radius_map, GatheredLightSample[] out_lightmap_data);    
+    delegate void CalculateAllLightingAndShadow(int texels_num, int size_x, int size_y, int sample_num, float[] world_pos, float[] world_normal, float[] texel_radius_map, GatheredLightSample[] out_lightmap_data);
+
+    delegate void CalculateVolumeSampleList(int num_samples, float[] world_pos,
+        [In, Out] VolumetricLightSample[] out_upper_samples,
+        [In, Out] VolumetricLightSample[] out_lower_samples);
 
     public ucDLLFunctionCaller(ucThreadDispatcher thread_dispatcher)
     {
@@ -593,7 +652,38 @@ public class ucDLLFunctionCaller
     //lightprobe
     public void StartLightprobeBaking()
     {
+        Debug.Log("Baking light probe!");
 
+        SendNeedBakedLightData();
+        RunRadiosityPass();
+        
+        List<Vector3> probes_pos = ucExportLightProbe.ExportProbePosition();
+        VolumetricLightSample[] upper_samples = new VolumetricLightSample[probes_pos.Count];
+        VolumetricLightSample[] lower_samples = new VolumetricLightSample[probes_pos.Count];
+        int sample_nums = probes_pos.Count;
+
+        Vector3[] pos_array = probes_pos.ToArray();
+        float[] pos_float_array = new float[pos_array.Length * 3];
+
+        for(int i = 0; i < pos_array.Length; ++i)
+        {
+            pos_float_array[i * 3] = pos_array[i].x;
+            pos_float_array[i * 3 + 1] = pos_array[i].y;
+            pos_float_array[i * 3 + 2] = pos_array[i].z;
+        }
+
+        object[] param = new object[]
+        {
+            sample_nums,
+            pos_float_array,
+            upper_samples,
+            lower_samples
+        };
+        ucNative.Invoke_Void<CalculateVolumeSampleList>(nativeLibraryPtr, param);
+
+        ucExportLightProbe.SetLightProbeData(upper_samples, lower_samples);
+
+        //ucNative.Invoke_Void<CalculateVolumeSampleList>(nativeLibraryPtr, sample_nums, pos_float_array, upper_samples, lower_samples);
     }
 
     public static void UnloadDLL()

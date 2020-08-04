@@ -67,11 +67,12 @@ public class ucInteractivePTEditorWindow : ScriptableWizard
             lightprobe_baking = !lightprobe_baking;
             if (lightprobe_baking)
             {
-                
+                LightprobeBakingStart();
             }
             else
             {
-                
+                Debug.Log("baking lightprobe stop!");
+                LightprobeBakingEnd();
             }
         }
     }
@@ -107,6 +108,9 @@ public class ucInteractivePTEditorWindow : ScriptableWizard
 
     void LightprobeBakingStart()
     {
+        Debug.Log("Export scene data...");
+        ucExportMesh.mrt_datas = ucObjectMrt.StartExportData();
+
         if (dll_function_caller == null)
         {
             if (thread_dispatcher == null)
@@ -118,7 +122,7 @@ public class ucInteractivePTEditorWindow : ScriptableWizard
         }
 
         dll_function_caller.LoadDLLAndInit();
-        //dll_function_caller.StartBaking();
+        dll_function_caller.StartLightprobeBaking();
     }
 
     void LightprobeBakingEnd()

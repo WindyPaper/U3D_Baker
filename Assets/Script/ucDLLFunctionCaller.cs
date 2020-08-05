@@ -634,7 +634,7 @@ public class ucDLLFunctionCaller
     {
         ExportPunctualLight export_lights = ucExportLights.ExportNeedBakedLights();
 
-        ucNative.Invoke_Void<ImportDirectLights>(nativeLibraryPtr, export_lights.DirLightNum, export_lights.DirLights,
+        ucNative.Invoke_Void<ImportPunctualLights>(nativeLibraryPtr, export_lights.DirLightNum, export_lights.DirLights,
             export_lights.PointLightNum, export_lights.PointLights,
             export_lights.SpotLightNum, export_lights.SpotLights);
     }

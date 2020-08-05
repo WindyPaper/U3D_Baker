@@ -103,6 +103,29 @@
 				ret.V2 = v[8];
 
 				return ret;
+			}
+			
+			void Unity_RotateAboutAxis_Degrees_float(float3 In, float3 Axis, float Rotation, out float3 Out)
+			{
+				Rotation = radians(Rotation);
+				float s = sin(Rotation);
+				float c = cos(Rotation);
+				float one_minus_c = 1.0 - c;
+
+				Axis = normalize(Axis);
+				float3x3 rot_mat = 
+				{   one_minus_c * Axis.x * Axis.x + c, one_minus_c * Axis.x * Axis.y - Axis.z * s, one_minus_c * Axis.z * Axis.x + Axis.y * s,
+					one_minus_c * Axis.x * Axis.y + Axis.z * s, one_minus_c * Axis.y * Axis.y + c, one_minus_c * Axis.y * Axis.z - Axis.x * s,
+					one_minus_c * Axis.z * Axis.x - Axis.y * s, one_minus_c * Axis.y * Axis.z + Axis.x * s, one_minus_c * Axis.z * Axis.z + c
+				};
+				Out = mul(rot_mat,  In);
+			}
+
+			float3 ToUE4(float3 In)
+			{
+				float3 ret;				
+				Unity_RotateAboutAxis_Degrees_float(In.xyz, float3(1, 0, 0), 90, ret.xyz);
+				return ret;
 			}			
 
             v2f vert (appdata v)
@@ -128,9 +151,10 @@
 				rgb_sh.G = InitSH3(_sh3_g);
 				rgb_sh.B = InitSH3(_sh3_b);
 
-				float3 dir = float3(i.normal.z, -i.normal.y, i.normal.x); // ue to unity
-				FThreeBandSHVector basis = SHBasisFunction3(dir);
-				half3 gi = DotSH3(rgb_sh, basis);
+				//float3 dir = float3(i.normal.z, -i.normal.y, i.normal.x); // ue to unity
+				float3 dir = ToUE4(i.normal); // ue to unity
+				FThreeBandSHVector basis = SHBasisFunction3(normalize(dir));
+				half3 gi = DotSH3(rgb_sh, basis) / 3.1415f;
 
 				return float4(gi, 1.0f);
 				//return float4(occlusion.xyz, 1.0f);

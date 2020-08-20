@@ -736,7 +736,7 @@ public class ucDLLFunctionCaller
                 writer.Write(mesh_mtl_datas[0].mesh_data.vertex_num);
 
                 fixed (float* f = mesh_mtl_datas[0].mesh_data.vertex_array)
-                {
+                {                    
                     Byte* b_data = (Byte*)f;
                     //writer.Write((bype[])(byte*)f, 0, mesh_mtl_datas[0].mesh_data.vertex_num * sizeof(float) * 3);
                 }                
@@ -744,11 +744,7 @@ public class ucDLLFunctionCaller
             }
         }
 
-        ucNative.CaptureOutputStart();
-
         ucNative.Invoke_Void<RasterizeModelToSurfel>(nativeLibraryPtr, param);
-
-        ucNative.CaptureOutputEnd();
 
         SurfelData[] test_out = out_surfel_data;
 

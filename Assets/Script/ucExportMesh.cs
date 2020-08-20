@@ -19,6 +19,7 @@ public struct ucCyclesMeshData
     public int[] lm_index_array;
     public int triangle_num;
     public int mtl_num;
+    public Bounds bbox;
 };
 
 public struct LightmassBakerData
@@ -33,7 +34,7 @@ public struct LightmassBakerData
     public float[] world_pos_map;
     public float[] world_normal_map;
     public float[] emissive_map;
-    public float[] texel_radius;
+    public float[] texel_radius;    
 };
 
 public struct ucCyclesMeshMtlData
@@ -135,6 +136,11 @@ public class ucExportMesh
         int index_offset = 0;
         foreach (MeshFilter mf in objs)
         {
+            if (mf.tag == "GameController")
+            {
+                continue;
+            }
+
             ucCyclesMeshMtlData mesh_mtl_data = new ucCyclesMeshMtlData();
             mesh_mtl_data.mesh_data = new ucCyclesMeshData();
             ref ucCyclesMeshData mesh_data = ref mesh_mtl_data.mesh_data;
@@ -162,7 +168,7 @@ public class ucExportMesh
                 Debug.LogError("No mesh!");
                 continue;
             }
-
+            mesh_data.bbox = m.bounds;
             mesh_data.vertex_array = new float[m.vertices.Length * 3];
             foreach (Vector3 vv in m.vertices)
             {                

@@ -53,12 +53,12 @@ public class ucInteractivePTEditorWindow : ScriptableWizard
             if (interactive_rendering)
             {                
                 //Record time
-                InteractiveRenderingStart();
+                //InteractiveRenderingStart();
             }
             else
             {
                 //Debug.Log("Interactive Stop!");
-                InteractiveRenderingEnd();
+                //InteractiveRenderingEnd();
             }
         }
 

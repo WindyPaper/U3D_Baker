@@ -27,6 +27,39 @@ public class ucExportLightProbe
         return out_pos;
     }
 
+    //http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.421.901&rep=rep1&type=pdf
+    //Lambertian Reflectance and Linear Subspaces
+    unsafe public static float[] dering(float[] sh)
+    {
+        float[] dering_sh = new float[sh.Length];
+
+        float[] kn = new float[] {
+            Mathf.Sqrt(Mathf.PI)/2.0f,
+            Mathf.Sqrt(Mathf.PI/3.0f),
+            Mathf.Sqrt(Mathf.PI * 5.0f)/8.0f,            
+        };
+
+        float[] alpha_l = new float[] {
+            Mathf.Sqrt(Mathf.PI * 4.0f),
+            Mathf.Sqrt((Mathf.PI * 4.0f)/3.0f),
+            Mathf.Sqrt((Mathf.PI * 4.0f) / 5.0f)
+        };
+
+        dering_sh[0] = sh[0] * kn[0] * alpha_l[0];
+
+        dering_sh[1] = sh[1] * kn[1] * alpha_l[1];
+        dering_sh[2] = sh[2] * kn[1] * alpha_l[1];
+        dering_sh[3] = sh[3] * kn[1] * alpha_l[1];
+
+        dering_sh[4] = sh[4] * kn[2] * alpha_l[2];
+        dering_sh[5] = sh[5] * kn[2] * alpha_l[2];
+        dering_sh[6] = sh[6] * kn[2] * alpha_l[2];
+        dering_sh[7] = sh[7] * kn[2] * alpha_l[2];
+        dering_sh[8] = sh[8] * kn[2] * alpha_l[2];
+
+        return dering_sh;
+    }
+
     unsafe public static float[] FixedFloatArrayToSafeArray(float* fix_array, int num)
     {
         float[] ret = new float[num];
@@ -35,6 +68,8 @@ public class ucExportLightProbe
         {
             ret[i] = fix_array[i];
         }
+
+        //ret = dering(ret);
 
         return ret;
     }

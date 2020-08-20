@@ -6,6 +6,7 @@ using System;
 using UnityEditor;
 using System.Reflection;
 using System.Threading;
+using System.IO;
 
 [StructLayout(LayoutKind.Sequential)]
 public struct ucCyclesInitOptions
@@ -118,6 +119,17 @@ unsafe struct GatheredLightSample
     public float NumBackfaceHits;
 };
 
+[StructLayout(LayoutKind.Sequential, Pack = 16)] //in C++ align 16
+unsafe struct SurfelData
+{
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
+    public fixed float pos[4];
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
+    public fixed float normal[4];
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
+    public fixed float diff_alpha[4];
+};
+
 unsafe struct OutputLightMapData
 {
     public String name;
@@ -206,6 +218,10 @@ public class ucDLLFunctionCaller
     delegate void CalculateVolumeSampleList(int num_samples, float[] world_pos,
         [In, Out] VolumetricLightSample[] out_upper_samples,
         [In, Out] VolumetricLightSample[] out_lower_samples);
+
+    delegate void RasterizeModelToSurfel(int grid_element_size, int num_vertices, int num_triangle,
+        float[] local_pos, float[] uvs, int[] triangle_indexs, int[] triangle_mat_tex_indexs, float[] bbox,
+        int[] out_surfel_num, SurfelData[] out_surfel_data);
 
     public ucDLLFunctionCaller(ucThreadDispatcher thread_dispatcher)
     {
@@ -647,43 +663,103 @@ public class ucDLLFunctionCaller
     public void LightmassLogCb(String str)
     {
         Debug.Log(str);
-    }    
+    }
 
     //lightprobe
-    public void StartLightprobeBaking()
+    unsafe public void StartLightprobeBaking()
     {
-        Debug.Log("Baking light probe!");
+        //Debug.Log("Baking light probe!");
 
-        SendNeedBakedLightData();
-        RunRadiosityPass();
-        
-        List<Vector3> probes_pos = ucExportLightProbe.ExportProbePosition();
-        VolumetricLightSample[] upper_samples = new VolumetricLightSample[probes_pos.Count];
-        VolumetricLightSample[] lower_samples = new VolumetricLightSample[probes_pos.Count];
-        int sample_nums = probes_pos.Count;
+        //SendNeedBakedLightData();
+        //RunRadiosityPass();
 
-        Vector3[] pos_array = probes_pos.ToArray();
-        float[] pos_float_array = new float[pos_array.Length * 3];
+        //List<Vector3> probes_pos = ucExportLightProbe.ExportProbePosition();
+        //VolumetricLightSample[] upper_samples = new VolumetricLightSample[probes_pos.Count];
+        //VolumetricLightSample[] lower_samples = new VolumetricLightSample[probes_pos.Count];
+        //int sample_nums = probes_pos.Count;
 
-        for(int i = 0; i < pos_array.Length; ++i)
-        {
-            pos_float_array[i * 3] = pos_array[i].x;
-            pos_float_array[i * 3 + 1] = pos_array[i].y;
-            pos_float_array[i * 3 + 2] = pos_array[i].z;
-        }
+        //Vector3[] pos_array = probes_pos.ToArray();
+        //float[] pos_float_array = new float[pos_array.Length * 3];
+
+        //for(int i = 0; i < pos_array.Length; ++i)
+        //{
+        //    pos_float_array[i * 3] = pos_array[i].x;
+        //    pos_float_array[i * 3 + 1] = pos_array[i].y;
+        //    pos_float_array[i * 3 + 2] = pos_array[i].z;
+        //}
+
+        //object[] param = new object[]
+        //{
+        //    sample_nums,
+        //    pos_float_array,
+        //    upper_samples,
+        //    lower_samples
+        //};
+        //ucNative.Invoke_Void<CalculateVolumeSampleList>(nativeLibraryPtr, param);
+
+        //ucExportLightProbe.SetLightProbeData(upper_samples, lower_samples);
+
+        //test
+        List<ucCyclesMeshMtlData> mesh_mtl_datas = new List<ucCyclesMeshMtlData>();
+        ucExportMesh.ExportCurrSceneMesh(ref mesh_mtl_datas);
+        float[] min_max = new float[6];
+        min_max[0] = mesh_mtl_datas[0].mesh_data.bbox.min.x * 100.0f;
+        min_max[1] = mesh_mtl_datas[0].mesh_data.bbox.min.y * 100.0f;
+        min_max[2] = mesh_mtl_datas[0].mesh_data.bbox.min.z * 100.0f;
+
+        min_max[3] = mesh_mtl_datas[0].mesh_data.bbox.max.x * 100.0f;
+        min_max[4] = mesh_mtl_datas[0].mesh_data.bbox.max.y * 100.0f;
+        min_max[5] = mesh_mtl_datas[0].mesh_data.bbox.max.z * 100.0f;
+
+        int[] out_surfel_num = new int[1];
+        Debug.Log("Surfel size = " + sizeof(SurfelData));
+        SurfelData[] out_surfel_data = new SurfelData[200];
 
         object[] param = new object[]
         {
-            sample_nums,
-            pos_float_array,
-            upper_samples,
-            lower_samples
+            10, //cm
+            mesh_mtl_datas[0].mesh_data.vertex_num,
+            mesh_mtl_datas[0].mesh_data.triangle_num,
+            mesh_mtl_datas[0].mesh_data.vertex_array,
+            mesh_mtl_datas[0].mesh_data.uvs_array,
+            mesh_mtl_datas[0].mesh_data.index_array,
+            mesh_mtl_datas[0].mesh_data.index_array,
+            min_max,
+            out_surfel_num,
+            out_surfel_data
         };
-        ucNative.Invoke_Void<CalculateVolumeSampleList>(nativeLibraryPtr, param);
 
-        ucExportLightProbe.SetLightProbeData(upper_samples, lower_samples);
+        using (BinaryWriter writer = new BinaryWriter(File.Open("./Model.bin", FileMode.Create)))
+        {
+            unsafe
+            {
+                writer.Write(mesh_mtl_datas[0].mesh_data.vertex_num);
 
-        //ucNative.Invoke_Void<CalculateVolumeSampleList>(nativeLibraryPtr, sample_nums, pos_float_array, upper_samples, lower_samples);
+                fixed (float* f = mesh_mtl_datas[0].mesh_data.vertex_array)
+                {
+                    Byte* b_data = (Byte*)f;
+                    //writer.Write((bype[])(byte*)f, 0, mesh_mtl_datas[0].mesh_data.vertex_num * sizeof(float) * 3);
+                }                
+                
+            }
+        }
+
+        ucNative.CaptureOutputStart();
+
+        ucNative.Invoke_Void<RasterizeModelToSurfel>(nativeLibraryPtr, param);
+
+        ucNative.CaptureOutputEnd();
+
+        SurfelData[] test_out = out_surfel_data;
+
+        Debug.Log("surfel number = " + out_surfel_num[0]);
+        foreach (SurfelData i in test_out)
+        {
+            //if (i.pos[0] != 0.0f || i.pos[1] != 0.0f || i.pos[2] != 0.0f)
+            {
+                Debug.LogFormat("pos x = {0}, y = {1}, z = {2}, pixel index = {3}", i.pos[0], i.pos[1], i.pos[2], i.normal[0]);
+            }
+        }
     }
 
     public static void UnloadDLL()

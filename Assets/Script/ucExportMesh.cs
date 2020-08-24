@@ -168,7 +168,8 @@ public class ucExportMesh
                 Debug.LogError("No mesh!");
                 continue;
             }
-            mesh_data.bbox = m.bounds;
+            Renderer mr = mf.GetComponent<Renderer>();
+            mesh_data.bbox = mr.bounds;
             mesh_data.vertex_array = new float[m.vertices.Length * 3];
             foreach (Vector3 vv in m.vertices)
             {                
@@ -183,24 +184,25 @@ public class ucExportMesh
             }
             mesh_data.vertex_num = numVertices;
 
-            //int numNormal = 0;
-            //mesh_data.normal_array = new float[m.normals.Length * 3];
-            //foreach (Vector3 nn in m.normals)
-            //{
-            //    //Vector3 v = r * nn;
-            //    //v = Vector3.Scale(v, final_scale);
-            //    //v = Vector3.Normalize(v);
-            //    //Vector4 v = new Vector4(nn.x, nn.y, nn.z, 0.0f);
-            //    Vector3 v = nn;// Matrix4x4.Transpose(t.transform.worldToLocalMatrix).MultiplyVector(nn);
-            //    v = ucCoordToUE.F3(v);
+            int numNormal = 0;
+            mesh_data.normal_array = new float[m.normals.Length * 3];
+            foreach (Vector3 nn in m.normals)
+            {
+                //Vector3 v = r * nn;
+                //v = Vector3.Scale(v, final_scale);
+                //v = Vector3.Normalize(v);
+                //Vector4 v = new Vector4(nn.x, nn.y, nn.z, 0.0f);
+                Vector3 v = Matrix4x4.Transpose(t.transform.worldToLocalMatrix).MultiplyVector(nn);
+                v = v.normalized;
+                v = ucCoordToUE.F3(v);
 
-            //    mesh_data.normal_array[numNormal * 3] = v.x;
-            //    mesh_data.normal_array[numNormal * 3 + 1] = v.y;
-            //    mesh_data.normal_array[numNormal * 3 + 2] = v.z;
-            //    //mesh_data.normal_array[numNormal * 4 + 3] = 0.0f;
+                mesh_data.normal_array[numNormal * 3] = v.x;
+                mesh_data.normal_array[numNormal * 3 + 1] = v.y;
+                mesh_data.normal_array[numNormal * 3 + 2] = v.z;
+                //mesh_data.normal_array[numNormal * 4 + 3] = 0.0f;
 
-            //    numNormal++;
-            //}
+                numNormal++;
+            }
 
             int numUVs = 0;
             mesh_data.uvs_array = new float[m.uv.Length * 2];

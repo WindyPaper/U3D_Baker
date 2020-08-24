@@ -220,7 +220,7 @@ public class ucDLLFunctionCaller
         [In, Out] VolumetricLightSample[] out_lower_samples);
 
     delegate void RasterizeModelToSurfel(int grid_element_size, int num_vertices, int num_triangle,
-        float[] local_pos, float[] uvs, int[] triangle_indexs, int[] triangle_mat_tex_indexs, float[] bbox,
+        float[] local_pos, float[] normals, float[] uvs, int[] triangle_indexs, int[] triangle_mat_tex_indexs, float[] bbox,
         int[] out_surfel_num, SurfelData[] out_surfel_data);
 
     public ucDLLFunctionCaller(ucThreadDispatcher thread_dispatcher)
@@ -702,60 +702,74 @@ public class ucDLLFunctionCaller
         //test
         List<ucCyclesMeshMtlData> mesh_mtl_datas = new List<ucCyclesMeshMtlData>();
         ucExportMesh.ExportCurrSceneMesh(ref mesh_mtl_datas);
-        float[] min_max = new float[6];
-        min_max[0] = mesh_mtl_datas[0].mesh_data.bbox.min.x * 100.0f;
-        min_max[1] = mesh_mtl_datas[0].mesh_data.bbox.min.y * 100.0f;
-        min_max[2] = mesh_mtl_datas[0].mesh_data.bbox.min.z * 100.0f;
+        Vector3[] min_max = new Vector3[2];
+        min_max[0] = new Vector3(mesh_mtl_datas[0].mesh_data.bbox.min.x * 100.0f,
+            mesh_mtl_datas[0].mesh_data.bbox.min.y * 100.0f,
+            mesh_mtl_datas[0].mesh_data.bbox.min.z * 100.0f);
+        min_max[0] = ucCoordToUE.F3(min_max[0]);
 
-        min_max[3] = mesh_mtl_datas[0].mesh_data.bbox.max.x * 100.0f;
-        min_max[4] = mesh_mtl_datas[0].mesh_data.bbox.max.y * 100.0f;
-        min_max[5] = mesh_mtl_datas[0].mesh_data.bbox.max.z * 100.0f;
+        min_max[1] = new Vector3(mesh_mtl_datas[0].mesh_data.bbox.max.x * 100.0f,
+            mesh_mtl_datas[0].mesh_data.bbox.max.y * 100.0f,
+            mesh_mtl_datas[0].mesh_data.bbox.max.z * 100.0f);
+        min_max[1] = ucCoordToUE.F3(min_max[1]);
+        float[] min_max_float = new float[6];
+        min_max_float[0] = Math.Min(min_max[0].x, min_max[1].x);
+        min_max_float[1] = Math.Min(min_max[0].y, min_max[1].y);
+        min_max_float[2] = Math.Min(min_max[0].z, min_max[1].z);
+        min_max_float[3] = Math.Max(min_max[1].x, min_max[0].x);
+        min_max_float[4] = Math.Max(min_max[1].y, min_max[0].y);
+        min_max_float[5] = Math.Max(min_max[1].z, min_max[0].z);
 
         int[] out_surfel_num = new int[1];
         Debug.Log("Surfel size = " + sizeof(SurfelData));
         SurfelData[] out_surfel_data = new SurfelData[200];
 
+        int grid_size = 10; // cm
         object[] param = new object[]
         {
-            10, //cm
+            grid_size, //cm
             mesh_mtl_datas[0].mesh_data.vertex_num,
             mesh_mtl_datas[0].mesh_data.triangle_num,
             mesh_mtl_datas[0].mesh_data.vertex_array,
+            mesh_mtl_datas[0].mesh_data.normal_array,
             mesh_mtl_datas[0].mesh_data.uvs_array,
             mesh_mtl_datas[0].mesh_data.index_array,
             mesh_mtl_datas[0].mesh_data.index_array,
-            min_max,
+            min_max_float,
             out_surfel_num,
             out_surfel_data
-        };
-
-        using (BinaryWriter writer = new BinaryWriter(File.Open("./Model.bin", FileMode.Create)))
-        {
-            unsafe
-            {
-                writer.Write(mesh_mtl_datas[0].mesh_data.vertex_num);
-
-                fixed (float* f = mesh_mtl_datas[0].mesh_data.vertex_array)
-                {                    
-                    Byte* b_data = (Byte*)f;
-                    //writer.Write((bype[])(byte*)f, 0, mesh_mtl_datas[0].mesh_data.vertex_num * sizeof(float) * 3);
-                }                
-                
-            }
-        }
+        };        
 
         ucNative.Invoke_Void<RasterizeModelToSurfel>(nativeLibraryPtr, param);
 
         SurfelData[] test_out = out_surfel_data;
 
-        Debug.Log("surfel number = " + out_surfel_num[0]);
-        foreach (SurfelData i in test_out)
+        //Debug.Log("surfel number = " + out_surfel_num[0]);
+        List<Vector3> pos = new List<Vector3>();
+        List<Vector3> normal = new List<Vector3>();
+        //foreach (SurfelData i in test_out)
+        //{
+        //    //if (i.pos[0] != 0.0f || i.pos[1] != 0.0f || i.pos[2] != 0.0f)
+        //    pos.Add(new Vector3(i.pos[0]/100.0f, i.pos[1]/100.0f, i.pos[2]/100.0f)); //to unity unit size.
+        //    normal.Add(new Vector3(i.normal[0], i.normal[1], i.normal[2]));
+        //}
+        for(int i = 0; i < out_surfel_num[0]; ++i)
         {
-            //if (i.pos[0] != 0.0f || i.pos[1] != 0.0f || i.pos[2] != 0.0f)
-            {
-                Debug.LogFormat("pos x = {0}, y = {1}, z = {2}, pixel index = {3}", i.pos[0], i.pos[1], i.pos[2], i.normal[0]);
-            }
+            pos.Add(new Vector3(
+                out_surfel_data[i].pos[0] / 100.0f, 
+                out_surfel_data[i].pos[1] / 100.0f, 
+                out_surfel_data[i].pos[2] / 100.0f)); //to unity unit size.
+
+            float n0 = out_surfel_data[i].normal[0];
+            float n1 = out_surfel_data[i].normal[1];
+            float n2 = out_surfel_data[i].normal[2];
+            float n3 = out_surfel_data[i].normal[3];
+            normal.Add(new Vector3(
+                out_surfel_data[i].normal[0],
+                out_surfel_data[i].normal[1], 
+                out_surfel_data[i].normal[2]));
         }
+        ucCreatePlaneVisualization.CreatePlaneVisualization(grid_size, pos.ToArray(), normal.ToArray());
     }
 
     public static void UnloadDLL()

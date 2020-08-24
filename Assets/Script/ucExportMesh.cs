@@ -193,6 +193,7 @@ public class ucExportMesh
                 //v = Vector3.Normalize(v);
                 //Vector4 v = new Vector4(nn.x, nn.y, nn.z, 0.0f);
                 Vector3 v = Matrix4x4.Transpose(t.transform.worldToLocalMatrix).MultiplyVector(nn);
+                //Vector3 v = t.transform.TransformDirection(nn);
                 v = v.normalized;
                 v = ucCoordToUE.F3(v);
 

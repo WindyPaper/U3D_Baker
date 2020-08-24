@@ -760,10 +760,6 @@ public class ucDLLFunctionCaller
                 out_surfel_data[i].pos[1] / 100.0f, 
                 out_surfel_data[i].pos[2] / 100.0f)); //to unity unit size.
 
-            float n0 = out_surfel_data[i].normal[0];
-            float n1 = out_surfel_data[i].normal[1];
-            float n2 = out_surfel_data[i].normal[2];
-            float n3 = out_surfel_data[i].normal[3];
             normal.Add(new Vector3(
                 out_surfel_data[i].normal[0],
                 out_surfel_data[i].normal[1], 

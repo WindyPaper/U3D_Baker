@@ -341,6 +341,12 @@ public class ucDLLFunctionCaller
     public void SendAllMeshToCycles()
     {
         List<ucCyclesMeshMtlData> mesh_mtl_datas = new List<ucCyclesMeshMtlData>();
+
+        if(mesh_mtl_datas.Count == 0)
+        {
+            Debug.Log("No mesh to export, return!");
+            return;
+        }
         ucExportMesh.ExportCurrSceneMesh(ref mesh_mtl_datas);
 
         List<float> vertex_array_list = new List<float>();
@@ -721,8 +727,8 @@ public class ucDLLFunctionCaller
         min_max_float[5] = Math.Max(min_max[1].z, min_max[0].z);
 
         int[] out_surfel_num = new int[1];
-        Debug.Log("Surfel size = " + sizeof(SurfelData));
-        SurfelData[] out_surfel_data = new SurfelData[200];
+        //Debug.Log("Surfel size = " + sizeof(SurfelData));
+        SurfelData[] out_surfel_data = new SurfelData[1024];
 
         int grid_size = 10; // cm
         object[] param = new object[]
@@ -742,9 +748,9 @@ public class ucDLLFunctionCaller
 
         ucNative.Invoke_Void<RasterizeModelToSurfel>(nativeLibraryPtr, param);
 
-        SurfelData[] test_out = out_surfel_data;
+        //SurfelData[] test_out = out_surfel_data;
 
-        //Debug.Log("surfel number = " + out_surfel_num[0]);
+        Debug.Log("surfel number = " + out_surfel_num[0]);
         List<Vector3> pos = new List<Vector3>();
         List<Vector3> normal = new List<Vector3>();
         //foreach (SurfelData i in test_out)

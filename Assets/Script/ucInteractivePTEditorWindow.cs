@@ -39,6 +39,7 @@ public class ucInteractivePTEditorWindow : ScriptableWizard
 
     bool interactive_rendering = false;
     bool lightprobe_baking = false;
+    bool export_surfel_data = false;
 
     ucDLLFunctionCaller dll_function_caller = null;
     ucThreadDispatcher thread_dispatcher = null;
@@ -67,12 +68,27 @@ public class ucInteractivePTEditorWindow : ScriptableWizard
             lightprobe_baking = !lightprobe_baking;
             if (lightprobe_baking)
             {
-                LightprobeBakingStart();
+                //LightprobeBakingStart();
             }
             else
             {
                 Debug.Log("baking lightprobe stop!");
-                LightprobeBakingEnd();
+                //LightprobeBakingEnd();
+            }
+        }
+
+        if (export_surfel_data != GUILayout.Toggle(export_surfel_data, new GUIContent("GenerateSurfel", "export mesh and generate surfel data"), "Button"))
+        {
+            export_surfel_data = !export_surfel_data;
+            if (export_surfel_data)
+            {
+                GenerateSurfelStart();
+            }
+            else
+            {
+                Debug.Log("GenerateSurfel stop!");
+                GenerateSurfelEnd();
+
             }
         }
     }
@@ -126,6 +142,32 @@ public class ucInteractivePTEditorWindow : ScriptableWizard
     }
 
     void LightprobeBakingEnd()
+    {
+        if (dll_function_caller != null)
+            dll_function_caller.Release();
+        dll_function_caller = null;
+    }
+
+    void GenerateSurfelStart()
+    {
+        Debug.Log("Export scene data...");
+        //ucExportMesh.mrt_datas = ucObjectMrt.StartExportData();
+
+        if (dll_function_caller == null)
+        {
+            if (thread_dispatcher == null)
+            {
+                thread_dispatcher = ucThreadDispatcher.Initialize();
+            }
+
+            dll_function_caller = new ucDLLFunctionCaller(thread_dispatcher);
+        }
+
+        dll_function_caller.LoadDLLAndInitSurfel();
+        dll_function_caller.StartGenerateSurfelData();
+    }
+
+    void GenerateSurfelEnd()
     {
         if (dll_function_caller != null)
             dll_function_caller.Release();

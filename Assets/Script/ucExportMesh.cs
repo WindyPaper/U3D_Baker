@@ -129,7 +129,7 @@ public class ucExportMesh
         return bake_data_list;
     }
 
-    public static void ExportCurrSceneMesh(ref List<ucCyclesMeshMtlData> mesh_data_list)
+    public static void ExportCurrSceneMesh(ref List<ucCyclesMeshMtlData> mesh_data_list, bool enable_index_offset = true)
     {
         List<MeshFilter> objs = GetAllObjectsInScene();
 
@@ -271,7 +271,11 @@ public class ucExportMesh
                 }
             }
 
-            index_offset += mesh_data.vertex_num;
+            if(enable_index_offset)
+            {
+                //packing all meshes
+                index_offset += mesh_data.vertex_num;
+            }            
             mesh_data_list.Add(mesh_mtl_data);
         }
 

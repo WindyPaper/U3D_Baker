@@ -1,12 +1,21 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 public class ucCreatePlaneVisualization
 {    
 
     static public void CreatePlaneVisualization(int grid_size, Vector3[] pos, Vector3[] normals)
     {
+        //instance rendering
+        MaterialPropertyBlock props = new MaterialPropertyBlock();
+        MeshRenderer renderer;
+
+        Shader debug_inst_shader = Shader.Find("Unlit/DebugPlaneShader");
+        Material inst_mat = new Material(debug_inst_shader);
+        inst_mat.enableInstancing = true;
+
         GameObject plane_root = new GameObject("PlaneRoot");
         for(int i = 0; i < pos.Length; ++i)
         {
@@ -21,6 +30,14 @@ public class ucCreatePlaneVisualization
             //plane.transform.LookAt(new Vector3(1.0f, 0.0f, 0.0f));
 
             plane.transform.parent = plane_root.transform;
+
+            props.SetColor("_Color", new Color(0, 0, 0));
+
+            renderer = plane.GetComponent<MeshRenderer>();
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            renderer.material = inst_mat;
+            renderer.SetPropertyBlock(props);
         }
     }
 }

@@ -6,7 +6,7 @@ using UnityEngine.Rendering;
 public class ucCreatePlaneVisualization
 {    
 
-    static public void CreatePlaneVisualization(int grid_size, Vector3[] pos, Vector3[] normals)
+    static public void CreatePlaneVisualization(int grid_size, Vector3[] pos, Vector3[] normals, Vector3[] diff)
     {
         //instance rendering
         MaterialPropertyBlock props = new MaterialPropertyBlock();
@@ -31,7 +31,7 @@ public class ucCreatePlaneVisualization
 
             plane.transform.parent = plane_root.transform;
 
-            props.SetColor("_Color", new Color(0, 0, 0));
+            props.SetColor("_Color", new Color(diff[i].x, diff[i].y, diff[i].z, 1.0f));
 
             renderer = plane.GetComponent<MeshRenderer>();
             renderer.shadowCastingMode = ShadowCastingMode.Off;

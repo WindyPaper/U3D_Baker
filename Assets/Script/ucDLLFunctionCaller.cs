@@ -717,6 +717,8 @@ public class ucDLLFunctionCaller
 
     unsafe public void StartGenerateSurfelData()
     {
+        SendNeedBakedLightData();
+
         int grid_size = 10; // cm
         List<SurfelData> AllSurfelData = new List<SurfelData>();
 
@@ -775,7 +777,8 @@ public class ucDLLFunctionCaller
         Debug.Log("surfel number = " + AllSurfelData.Count);
         List<Vector3> pos = new List<Vector3>();
         List<Vector3> normal = new List<Vector3>();
-        
+        List<Vector3> diff = new List<Vector3>();
+
         foreach (SurfelData surfel_data in AllSurfelData)
         {
             pos.Add(new Vector3(
@@ -787,8 +790,13 @@ public class ucDLLFunctionCaller
                 surfel_data.normal[0],
                 surfel_data.normal[1],
                 surfel_data.normal[2]));
+
+            diff.Add(new Vector3(
+                surfel_data.diff_alpha[0],
+                surfel_data.diff_alpha[1],
+                surfel_data.diff_alpha[2]));
         }
-        ucCreatePlaneVisualization.CreatePlaneVisualization(grid_size, pos.ToArray(), normal.ToArray());
+        ucCreatePlaneVisualization.CreatePlaneVisualization(grid_size, pos.ToArray(), normal.ToArray(), diff.ToArray());
     }
 
     public static void UnloadDLL()

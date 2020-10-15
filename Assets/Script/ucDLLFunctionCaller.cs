@@ -223,6 +223,8 @@ public class ucDLLFunctionCaller
         float[] local_pos, float[] normals, float[] uvs, int[] triangle_indexs, int[] triangle_mat_tex_indexs, float[] bbox,
         int[] out_surfel_num, SurfelData[] out_surfel_data);
 
+    delegate void CalculateSurfelIndirectedLighting(SurfelData[] InOutSurfelData, int SurfelNum, int GridElementSize);
+
     public ucDLLFunctionCaller(ucThreadDispatcher thread_dispatcher)
     {
         this.thread_dispatcher = thread_dispatcher;
@@ -248,6 +250,8 @@ public class ucDLLFunctionCaller
         InitLightMass();
 
         SendSkyData();
+
+        SendAllMeshToCycles();
     }
 
     public void StartBaking()
@@ -350,13 +354,13 @@ public class ucDLLFunctionCaller
     public void SendAllMeshToCycles()
     {
         List<ucCyclesMeshMtlData> mesh_mtl_datas = new List<ucCyclesMeshMtlData>();
-
-        if(mesh_mtl_datas.Count == 0)
+      
+        ucExportMesh.ExportCurrSceneMesh(ref mesh_mtl_datas);
+        if (mesh_mtl_datas.Count == 0)
         {
             Debug.Log("No mesh to export, return!");
             return;
         }
-        ucExportMesh.ExportCurrSceneMesh(ref mesh_mtl_datas);
 
         List<float> vertex_array_list = new List<float>();
         List<float> uv_array_list = new List<float>();
@@ -747,8 +751,9 @@ public class ucDLLFunctionCaller
 
             int[] out_surfel_num = new int[1];
             //Debug.Log("Surfel size = " + sizeof(SurfelData));
-            SurfelData[] out_surfel_data = new SurfelData[1024];
-            
+            SurfelData[] out_surfel_data = new SurfelData[10240];
+            Debug.Log("Malloc Surfel size = " + (sizeof(SurfelData) * 10240)/1024.0f + " MB");
+
             object[] param = new object[]
             {
                 grid_size, //cm
@@ -775,11 +780,22 @@ public class ucDLLFunctionCaller
         }        
 
         Debug.Log("surfel number = " + AllSurfelData.Count);
+
+        //lighting
+        SurfelData[] LightingData = AllSurfelData.ToArray();
+        object[] lighting_param = new object[]
+        {
+            LightingData,
+            AllSurfelData.Count,
+            grid_size
+        };
+        ucNative.Invoke_Void<CalculateSurfelIndirectedLighting>(nativeLibraryPtr, lighting_param);
+
         List<Vector3> pos = new List<Vector3>();
         List<Vector3> normal = new List<Vector3>();
         List<Vector3> diff = new List<Vector3>();
 
-        foreach (SurfelData surfel_data in AllSurfelData)
+        foreach (SurfelData surfel_data in LightingData)
         {
             pos.Add(new Vector3(
                 surfel_data.pos[0] / 100.0f,

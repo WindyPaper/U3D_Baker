@@ -164,7 +164,8 @@ public class ucInteractivePTEditorWindow : ScriptableWizard
         }
 
         dll_function_caller.LoadDLLAndInitSurfel();
-        dll_function_caller.StartGenerateSurfelData();
+        //dll_function_caller.StartGenerateSurfelData();
+        dll_function_caller.StartDebugDirectionalData();
     }
 
     void GenerateSurfelEnd()

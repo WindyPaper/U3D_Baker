@@ -1,4 +1,4 @@
-﻿using System.Collections;
+﻿//using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Runtime.InteropServices;
@@ -155,6 +155,11 @@ public class ucDLLFunctionCaller
     static IntPtr nativeLibraryPtr;
     ucThreadDispatcher thread_dispatcher = null;
 
+    static List<Vector3> debug_pos_list = null;
+    static List<List<Vector3>> debug_dir_line_list = null;
+
+    static List<Color> random_color = null;
+
     delegate int bake_scene(int number, int multiplyBy);
     delegate bool init_lightmass(ucCyclesInitOptions op);
 
@@ -224,6 +229,9 @@ public class ucDLLFunctionCaller
         int[] out_surfel_num, SurfelData[] out_surfel_data);
 
     delegate void CalculateSurfelIndirectedLighting(SurfelData[] InOutSurfelData, int SurfelNum, int GridElementSize);
+
+    delegate void GetDirectionalDebugData(SurfelData[] InOutSurfelData, int SurfelNum, int GridElementSize, 
+        float[]Indir, int[] SurfelPlaneCountBuf, int[] SortingData, int[] XZSize);
 
     public ucDLLFunctionCaller(ucThreadDispatcher thread_dispatcher)
     {
@@ -812,7 +820,154 @@ public class ucDLLFunctionCaller
                 surfel_data.diff_alpha[1],
                 surfel_data.diff_alpha[2]));
         }
+        //debug_pos_list = pos;
         ucCreatePlaneVisualization.CreatePlaneVisualization(grid_size, pos.ToArray(), normal.ToArray(), diff.ToArray());
+        //UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
+    }
+
+    unsafe public void StartDebugDirectionalData()
+    {
+        SendNeedBakedLightData();
+
+        int grid_size = 100; // cm
+        List<SurfelData> AllSurfelData = new List<SurfelData>();
+
+        List<ucCyclesMeshMtlData> mesh_mtl_datas = new List<ucCyclesMeshMtlData>();
+        ucExportMesh.ExportCurrSceneMesh(ref mesh_mtl_datas, false);
+
+        foreach (ucCyclesMeshMtlData data in mesh_mtl_datas)
+        {
+            Vector3[] min_max = new Vector3[2];
+            min_max[0] = new Vector3(data.mesh_data.bbox.min.x * 100.0f,
+                data.mesh_data.bbox.min.y * 100.0f,
+                data.mesh_data.bbox.min.z * 100.0f);
+            min_max[0] = ucCoordToUE.F3(min_max[0]);
+
+            min_max[1] = new Vector3(data.mesh_data.bbox.max.x * 100.0f,
+                data.mesh_data.bbox.max.y * 100.0f,
+                data.mesh_data.bbox.max.z * 100.0f);
+            min_max[1] = ucCoordToUE.F3(min_max[1]);
+            float[] min_max_float = new float[6];
+            min_max_float[0] = Math.Min(min_max[0].x, min_max[1].x);
+            min_max_float[1] = Math.Min(min_max[0].y, min_max[1].y);
+            min_max_float[2] = Math.Min(min_max[0].z, min_max[1].z);
+            min_max_float[3] = Math.Max(min_max[1].x, min_max[0].x);
+            min_max_float[4] = Math.Max(min_max[1].y, min_max[0].y);
+            min_max_float[5] = Math.Max(min_max[1].z, min_max[0].z);
+
+            int[] out_surfel_num = new int[1];
+            //Debug.Log("Surfel size = " + sizeof(SurfelData));
+            SurfelData[] out_surfel_data = new SurfelData[10240];
+            Debug.Log("Malloc Surfel size = " + (sizeof(SurfelData) * 10240) / 1024.0f + " MB");
+
+            object[] param = new object[]
+            {
+                grid_size, //cm
+                data.mesh_data.vertex_num,
+                data.mesh_data.triangle_num,
+                data.mesh_data.vertex_array,
+                data.mesh_data.normal_array,
+                data.mesh_data.uvs_array,
+                data.mesh_data.index_array,
+                data.mesh_data.index_array,
+                min_max_float,
+                out_surfel_num,
+                out_surfel_data
+            };
+
+            ucNative.Invoke_Void<RasterizeModelToSurfel>(nativeLibraryPtr, param);
+
+
+            for (int i = 0; i < out_surfel_num[0]; ++i)
+            {
+                AllSurfelData.Add(out_surfel_data[i]);
+            }
+
+        }
+
+        Debug.Log("surfel number = " + AllSurfelData.Count);
+
+        //lighting
+        SurfelData[] LightingData = AllSurfelData.ToArray();
+        int[] SurfelCountBuf = new int[AllSurfelData.Count];
+        int[] SortingBuf = new int[AllSurfelData.Count];
+        int[] XZSize = new int[1];
+        Vector4 VecDir = ucCoordToUE.F4(new Vector4(-1, 0, 0));
+        VecDir.Normalize();
+        float[] CamDir = new float[4];
+        CamDir[0] = VecDir.x;
+        CamDir[1] = VecDir.y;
+        CamDir[2] = VecDir.z;
+        CamDir[3] = VecDir.w;
+        object[] debug_directinal_param = new object[]
+        {
+            LightingData,
+            AllSurfelData.Count,
+            grid_size,
+            CamDir,
+            SurfelCountBuf,
+            SortingBuf,
+            XZSize
+        };
+        ucNative.Invoke_Void<GetDirectionalDebugData>(nativeLibraryPtr, debug_directinal_param);
+
+        List<Vector3> surfel_pos = new List<Vector3>();
+
+        foreach (SurfelData surfel_data in AllSurfelData)
+        {
+            surfel_pos.Add(new Vector3(
+                surfel_data.pos[0] / 100.0f,
+                surfel_data.pos[1] / 100.0f,
+                surfel_data.pos[2] / 100.0f)); //to unity unit size            
+        }
+
+        List<List<Vector3>> DirLineData = new List<List<Vector3>>();
+        int offset = 0;
+        for (int i = 0; i < XZSize[0]; ++i)
+        {
+            int count = SurfelCountBuf[i];
+
+            if (count > 0)
+            {
+                List<Vector3> pos_list = new List<Vector3>();
+                for (int j = 0; j < count; ++j)
+                {
+                    int surfel_data_idx = SortingBuf[offset + j];
+                    pos_list.Add(surfel_pos[surfel_data_idx]);
+                }
+                DirLineData.Add(pos_list);
+
+                offset += count;
+            }
+        }
+
+        debug_dir_line_list = DirLineData;
+
+        //List<Vector3> pos = new List<Vector3>();
+        //List<Vector3> normal = new List<Vector3>();
+        //List<Vector3> diff = new List<Vector3>();
+
+        //foreach (SurfelData surfel_data in LightingData)
+        //{
+        //    pos.Add(new Vector3(
+        //        surfel_data.pos[0] / 100.0f,
+        //        surfel_data.pos[1] / 100.0f,
+        //        surfel_data.pos[2] / 100.0f)); //to unity unit size.
+
+        //    normal.Add(new Vector3(
+        //        surfel_data.normal[0],
+        //        surfel_data.normal[1],
+        //        surfel_data.normal[2]));
+
+        //    diff.Add(new Vector3(
+        //        surfel_data.diff_alpha[0],
+        //        surfel_data.diff_alpha[1],
+        //        surfel_data.diff_alpha[2]));
+        //}
+        //debug_pos_list = pos;
+
+        //ucCreatePlaneVisualization.CreatePlaneVisualization(grid_size, pos.ToArray(), normal.ToArray(), diff.ToArray());
+        UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
     }
 
     public static void UnloadDLL()
@@ -828,5 +983,73 @@ public class ucDLLFunctionCaller
         {
             nativeLibraryPtr = IntPtr.Zero;
         }
-    }    
+    }
+
+    static Color GetRandomColor(int idx)
+    {
+        int num = 10000;
+        idx = idx % num;
+
+        if (random_color == null)
+        {
+            random_color = new List<Color>();
+            for (int i = 0; i < num; ++i)
+            {
+                random_color.Add(new Color(
+                    UnityEngine.Random.Range(0, 1.0f),
+                    UnityEngine.Random.Range(0, 1.0f),
+                    UnityEngine.Random.Range(0, 1.0f)));
+            }
+        }
+
+        return random_color[idx];
+    }
+
+    [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected)]
+    unsafe static void DrawDirectionLine(Transform gizmoLocation, GizmoType gizmoType)
+    {
+        //Gizmos.color = new Color(1, 0, 0, 0.5F);
+        //Gizmos.DrawSphere(Vector3.zero, 1);
+
+        //if (debug_pos_list != null)
+        //{
+        //    foreach (Vector3 pos in debug_pos_list)
+        //    {
+        //        Gizmos.color = new Color(1.0f, 1.0f, 1.0f);
+        //        Gizmos.DrawCube(ucCoordToUnity.F3(pos), new Vector3(0.03f, 0.03f, 0.03f));
+
+        //        //ucDebugDrawArrow.ForGizmo(ucCoordToUnity.F3(pos), new Vector3(0, 1, 0));
+        //    }
+        //}
+
+        if (debug_dir_line_list != null)
+        {
+            for(int i = 0; i < debug_dir_line_list.Count; ++i)
+            {
+                List<Vector3> link_pos = debug_dir_line_list[i];
+                for(int j = 0; j < link_pos.Count; ++j)
+                {
+                    if(j == 0)
+                    {
+                        Gizmos.color = new Color(0, 1, 0);
+                    }
+                    else if(j == link_pos.Count - 1)
+                    {
+                        Gizmos.color = new Color(1, 0, 0);
+                    }
+                    else
+                    {
+                        //Gizmos.color = GetRandomColor(i);
+                        Gizmos.color = new Color(0, 0, 0);
+                    }                    
+                    Gizmos.DrawCube(ucCoordToUnity.F3(link_pos[j]), new Vector3(0.03f, 0.03f, 0.03f));
+
+                    if(j != link_pos.Count - 1)
+                    {
+                        Gizmos.DrawRay(ucCoordToUnity.F3(link_pos[j]), ucCoordToUnity.F3(link_pos[j + 1]) - ucCoordToUnity.F3(link_pos[j]));
+                    }
+                }
+            }
+        }
+    }
 }

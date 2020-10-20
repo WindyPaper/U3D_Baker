@@ -731,7 +731,7 @@ public class ucDLLFunctionCaller
     {
         SendNeedBakedLightData();
 
-        int grid_size = 10; // cm
+        int grid_size = 50; // cm
         List<SurfelData> AllSurfelData = new List<SurfelData>();
 
         List<ucCyclesMeshMtlData> mesh_mtl_datas = new List<ucCyclesMeshMtlData>();
@@ -829,7 +829,7 @@ public class ucDLLFunctionCaller
     {
         SendNeedBakedLightData();
 
-        int grid_size = 100; // cm
+        int grid_size = 50; // cm
         List<SurfelData> AllSurfelData = new List<SurfelData>();
 
         List<ucCyclesMeshMtlData> mesh_mtl_datas = new List<ucCyclesMeshMtlData>();
@@ -892,13 +892,19 @@ public class ucDLLFunctionCaller
         int[] SurfelCountBuf = new int[AllSurfelData.Count];
         int[] SortingBuf = new int[AllSurfelData.Count];
         int[] XZSize = new int[1];
-        Vector4 VecDir = ucCoordToUE.F4(new Vector4(-1, 0, 0));
+
+        GameObject dir_light = GameObject.Find("Directional Light");
+        Vector3 VecDir = ucCoordToUE.F3(dir_light.transform.forward);
+
         VecDir.Normalize();
+        Debug.LogFormat("Direction dir = ({0}, {1}, {2}) Transform dir = ({3}, {4}, {5})", 
+            dir_light.transform.forward.x, dir_light.transform.forward.y, dir_light.transform.forward.z,
+            VecDir.x, VecDir.y, VecDir.z);
         float[] CamDir = new float[4];
         CamDir[0] = VecDir.x;
         CamDir[1] = VecDir.y;
         CamDir[2] = VecDir.z;
-        CamDir[3] = VecDir.w;
+        CamDir[3] = 0.0f;
         object[] debug_directinal_param = new object[]
         {
             LightingData,
@@ -921,6 +927,7 @@ public class ucDLLFunctionCaller
                 surfel_data.pos[2] / 100.0f)); //to unity unit size            
         }
 
+        Debug.LogFormat("XZ SIZE = {0}", XZSize[0]);
         List<List<Vector3>> DirLineData = new List<List<Vector3>>();
         int offset = 0;
         for (int i = 0; i < XZSize[0]; ++i)
@@ -929,6 +936,7 @@ public class ucDLLFunctionCaller
 
             if (count > 0)
             {
+                //Debug.LogFormat("Idx = {0}, Count = {1}", i, count);
                 List<Vector3> pos_list = new List<Vector3>();
                 for (int j = 0; j < count; ++j)
                 {
@@ -1040,9 +1048,9 @@ public class ucDLLFunctionCaller
                     else
                     {
                         //Gizmos.color = GetRandomColor(i);
-                        Gizmos.color = new Color(0, 0, 0);
+                        Gizmos.color = new Color(0, 0, 1);
                     }                    
-                    Gizmos.DrawCube(ucCoordToUnity.F3(link_pos[j]), new Vector3(0.03f, 0.03f, 0.03f));
+                    //Gizmos.DrawCube(ucCoordToUnity.F3(link_pos[j]), new Vector3(0.03f, 0.03f, 0.03f));
 
                     if(j != link_pos.Count - 1)
                     {

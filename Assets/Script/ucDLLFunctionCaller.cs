@@ -743,6 +743,7 @@ public class ucDLLFunctionCaller
     {
         SendNeedBakedLightData();
 
+        const int grid_size = 10;
         GameObject PlaneRootObj = GameObject.Find("PlaneRoot");
         if(PlaneRootObj)
         {

@@ -130,6 +130,15 @@ unsafe struct SurfelData
     public fixed float diff_alpha[4];
 };
 
+[StructLayout(LayoutKind.Sequential)]
+public unsafe struct GIVolumeSHData
+{
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
+    public fixed float pos[4];
+
+    public shvectorrgb sh_vector;    
+};
+
 unsafe struct OutputLightMapData
 {
     public String name;
@@ -229,6 +238,9 @@ public class ucDLLFunctionCaller
         int[] out_surfel_num, SurfelData[] out_surfel_data);
 
     delegate void CalculateSurfelIndirectedLighting(SurfelData[] InOutSurfelData, int SurfelNum, int GridElementSize);
+
+    delegate void BakeGIVolume(SurfelData[] InOutSurfelData, int SurfelNum, int GridElementSize, 
+        GIVolumeSHData[] shdatas, int GIVolumeSHNum);
 
     delegate void GetDirectionalDebugData(SurfelData[] InOutSurfelData, int SurfelNum, int GridElementSize, 
         float[]Indir, int[] SurfelPlaneCountBuf, int[] SortingData, int[] XZSize);
@@ -695,7 +707,7 @@ public class ucDLLFunctionCaller
     //lightprobe
     unsafe public void StartLightprobeBaking()
     {
-        //Debug.Log("Baking light probe!");
+        Debug.Log("Baking light probe!");
 
         SendNeedBakedLightData();
         RunRadiosityPass();
@@ -731,7 +743,17 @@ public class ucDLLFunctionCaller
     {
         SendNeedBakedLightData();
 
-        int grid_size = 10; // cm
+        GameObject PlaneRootObj = GameObject.Find("PlaneRoot");
+        if(PlaneRootObj)
+        {
+            foreach (Transform child in PlaneRootObj.transform)
+            {
+                GameObject.DestroyImmediate(child.gameObject);
+            }
+        }
+        GameObject.DestroyImmediate(PlaneRootObj);
+
+        int grid_size = 50; // cm
         List<SurfelData> AllSurfelData = new List<SurfelData>();
 
         List<ucCyclesMeshMtlData> mesh_mtl_datas = new List<ucCyclesMeshMtlData>();
@@ -789,15 +811,37 @@ public class ucDLLFunctionCaller
 
         Debug.Log("surfel number = " + AllSurfelData.Count);
 
+        //GIVolumeData
+        List<Vector3> pos_list = ucGIVolume.ExportGIVolumePos();
+        int GIVolumeNum = pos_list.Count;
+        List<GIVolumeSHData> gi_pos_list = new List<GIVolumeSHData>();
+        foreach(Vector3 pos_elem in pos_list)
+        {
+            GIVolumeSHData gi_data = new GIVolumeSHData();
+            gi_data.pos[0] = pos_elem.x;
+            gi_data.pos[1] = pos_elem.y;
+            gi_data.pos[2] = pos_elem.z;
+            gi_data.pos[3] = 1.0f;
+
+            //Debug.LogFormat("pos = ({0}, {1}, {2})", pos_elem.x, pos_elem.y, pos_elem.z);
+
+            gi_pos_list.Add(gi_data);
+        }
+
         //lighting
         SurfelData[] LightingData = AllSurfelData.ToArray();
+        GIVolumeSHData[] shdatas = gi_pos_list.ToArray();
         object[] lighting_param = new object[]
         {
             LightingData,
             AllSurfelData.Count,
-            grid_size
+            grid_size,
+            shdatas,
+            GIVolumeNum
         };
-        ucNative.Invoke_Void<CalculateSurfelIndirectedLighting>(nativeLibraryPtr, lighting_param);
+
+        //ucNative.Invoke_Void<CalculateSurfelIndirectedLighting>(nativeLibraryPtr, lighting_param);
+        ucNative.Invoke_Void<BakeGIVolume>(nativeLibraryPtr, lighting_param);        
 
         List<Vector3> pos = new List<Vector3>();
         List<Vector3> normal = new List<Vector3>();
@@ -822,6 +866,8 @@ public class ucDLLFunctionCaller
         }
         //debug_pos_list = pos;
         ucCreatePlaneVisualization.CreatePlaneVisualization(grid_size, pos.ToArray(), normal.ToArray(), diff.ToArray());
+
+        ucGIVolume.CreateProbeVisualization(shdatas);
         //UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
     }
 
@@ -829,7 +875,7 @@ public class ucDLLFunctionCaller
     {
         SendNeedBakedLightData();
 
-        int grid_size = 100; // cm
+        int grid_size = 50; // cm
         List<SurfelData> AllSurfelData = new List<SurfelData>();
 
         List<ucCyclesMeshMtlData> mesh_mtl_datas = new List<ucCyclesMeshMtlData>();
@@ -889,10 +935,11 @@ public class ucDLLFunctionCaller
 
         //lighting
         SurfelData[] LightingData = AllSurfelData.ToArray();
-        int[] SurfelCountBuf = new int[AllSurfelData.Count];
-        int[] SortingBuf = new int[AllSurfelData.Count];
+        int[] SurfelCountBuf = new int[AllSurfelData.Count * 10];
+        int[] SortingBuf = new int[AllSurfelData.Count * 10];
         int[] XZSize = new int[1];
-        Vector4 VecDir = ucCoordToUE.F4(new Vector4(-1, 0, 0));
+        GameObject dir_light = GameObject.Find("Directional Light");
+        Vector4 VecDir = ucCoordToUE.F3(dir_light.transform.forward);
         VecDir.Normalize();
         float[] CamDir = new float[4];
         CamDir[0] = VecDir.x;
@@ -918,10 +965,11 @@ public class ucDLLFunctionCaller
             surfel_pos.Add(new Vector3(
                 surfel_data.pos[0] / 100.0f,
                 surfel_data.pos[1] / 100.0f,
-                surfel_data.pos[2] / 100.0f)); //to unity unit size            
+                surfel_data.pos[2] / 100.0f)); //to unity unit size
         }
 
         List<List<Vector3>> DirLineData = new List<List<Vector3>>();
+        Debug.LogFormat("XZSize[0] = {0}", XZSize[0]);
         int offset = 0;
         for (int i = 0; i < XZSize[0]; ++i)
         {
@@ -1033,14 +1081,14 @@ public class ucDLLFunctionCaller
                     {
                         Gizmos.color = new Color(0, 1, 0);
                     }
-                    else if(j == link_pos.Count - 1)
+                    else if(j == link_pos.Count - 2)
                     {
                         Gizmos.color = new Color(1, 0, 0);
                     }
                     else
                     {
                         //Gizmos.color = GetRandomColor(i);
-                        Gizmos.color = new Color(0, 0, 0);
+                        Gizmos.color = new Color(0, 0, 1);
                     }                    
                     Gizmos.DrawCube(ucCoordToUnity.F3(link_pos[j]), new Vector3(0.03f, 0.03f, 0.03f));
 

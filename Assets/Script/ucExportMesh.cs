@@ -53,7 +53,7 @@ public class ucExportMesh
         foreach (GameObject go in Resources.FindObjectsOfTypeAll(typeof(GameObject)) as GameObject[])
         {
             MeshFilter mf = go.transform.GetComponent<MeshFilter>();
-            if (mf && go.active == true)
+            if (mf && go.active == true && go.name != "GIVolume")
             {
                 //Debug.Log(go.name);
                 objectsInScene.Add(mf);

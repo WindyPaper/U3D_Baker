@@ -61,7 +61,7 @@ public class ucGIVolume
             //plane size is 10M X 10M
             GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             //float[] pos_safe_array = ucExportLightProbe.FixedFloatArrayToSafeArray(shdata[i].pos, 3);
-            sphere.transform.position = new Vector3(shdata[i].pos[0], shdata[i].pos[1], shdata[i].pos[2]);
+            sphere.transform.position = ucCoordToUnity.F3(new Vector3(shdata[i].pos[0]/100.0f, shdata[i].pos[1] / 100.0f, shdata[i].pos[2] / 100.0f));
             //Debug.LogFormat("pos = ({0}, {1}, {2})", sphere.transform.position.x, sphere.transform.position.y, sphere.transform.position.z);
             float scale_factor = 0.3f;
             sphere.transform.localScale = new Vector3(scale_factor, scale_factor, scale_factor);
@@ -75,7 +75,7 @@ public class ucGIVolume
             const int sh_num = 4;
             shvectorrgb sh2_data = shdata[i].sh_vector;
             float[] sh_r = ucExportLightProbe.FixedFloatArrayToSafeArray(sh2_data.r.v, sh_num);
-            Debug.LogFormat("sh r = {0}, {1}, {2}, {3}", sh_r[0], sh_r[1], sh_r[2], sh_r[3]);
+            //Debug.LogFormat("sh r = {0}, {1}, {2}, {3}", sh_r[0], sh_r[1], sh_r[2], sh_r[3]);
             props.SetVector("_sh2_r", new Vector4(sh_r[0], sh_r[1], sh_r[2], sh_r[3]));
             float[] sh_g = ucExportLightProbe.FixedFloatArrayToSafeArray(sh2_data.g.v, sh_num);
             props.SetVector("_sh2_g", new Vector4(sh_g[0], sh_g[1], sh_g[2], sh_g[3]));

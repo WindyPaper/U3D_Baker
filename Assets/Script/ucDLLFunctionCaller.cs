@@ -818,9 +818,10 @@ public class ucDLLFunctionCaller
         foreach(Vector3 pos_elem in pos_list)
         {
             GIVolumeSHData gi_data = new GIVolumeSHData();
-            gi_data.pos[0] = pos_elem.x;
-            gi_data.pos[1] = pos_elem.y;
-            gi_data.pos[2] = pos_elem.z;
+            Vector3 ue_pos_elem = ucCoordToUE.F3(pos_elem);
+            gi_data.pos[0] = ue_pos_elem.x * 100.0f;
+            gi_data.pos[1] = ue_pos_elem.y * 100.0f;
+            gi_data.pos[2] = ue_pos_elem.z * 100.0f;
             gi_data.pos[3] = 1.0f;
 
             //Debug.LogFormat("pos = ({0}, {1}, {2})", pos_elem.x, pos_elem.y, pos_elem.z);

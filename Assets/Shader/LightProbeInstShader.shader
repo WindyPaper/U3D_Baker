@@ -270,7 +270,7 @@ Shader "Unlit/LightProbeInstShader"
 				float finalg = dot(basis, shg);
 				float finalb = dot(basis, shb);
 
-				half3 gi = float3(finalr, finalg, finalb) / 3.1415f;
+				half3 gi = float3(finalr, finalg, finalb);
 
                 //float4 color = UNITY_ACCESS_INSTANCED_PROP(Props, _color);
 

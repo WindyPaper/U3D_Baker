@@ -812,10 +812,10 @@ public class ucDLLFunctionCaller
         Debug.Log("surfel number = " + AllSurfelData.Count);
 
         //GIVolumeData
-        List<Vector3> pos_list = ucGIVolume.ExportGIVolumePos();
-        int GIVolumeNum = pos_list.Count;
+        VolumeData volume_data = ucGIVolume.ExportGIVolumePos();
+        int GIVolumeNum = volume_data.pos.Count;
         List<GIVolumeSHData> gi_pos_list = new List<GIVolumeSHData>();
-        foreach(Vector3 pos_elem in pos_list)
+        foreach(Vector3 pos_elem in volume_data.pos)
         {
             GIVolumeSHData gi_data = new GIVolumeSHData();
             Vector3 ue_pos_elem = ucCoordToUE.F3(pos_elem);
@@ -866,10 +866,12 @@ public class ucDLLFunctionCaller
                 surfel_data.diff_alpha[2]));
         }
         //debug_pos_list = pos;
-        ucCreatePlaneVisualization.CreatePlaneVisualization(grid_size, pos.ToArray(), normal.ToArray(), diff.ToArray());
+        //ucCreatePlaneVisualization.CreatePlaneVisualization(grid_size, pos.ToArray(), normal.ToArray(), diff.ToArray());
 
-        ucGIVolume.CreateProbeVisualization(shdatas);
-        //UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
+        //ucGIVolume.CreateProbeVisualization(shdatas);
+
+        //create 3d texture
+        ucCreate3DTexture.CreateSH3DTexture(volume_data.lenx, volume_data.leny, volume_data.lenz, shdatas, "GIVolume");
     }
 
     unsafe public void StartDebugDirectionalData()

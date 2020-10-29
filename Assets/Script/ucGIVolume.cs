@@ -3,11 +3,19 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
+public struct VolumeData
+{
+    public List<Vector3> pos;
+    public int lenx;
+    public int leny;
+    public int lenz;
+}
+
 public class ucGIVolume
 {
     static List<Vector3> pos_list = null;
 
-    static public List<Vector3> ExportGIVolumePos()
+    static public VolumeData ExportGIVolumePos()
     {
         GameObject volume = GameObject.Find("GIVolume");
 
@@ -20,9 +28,9 @@ public class ucGIVolume
 
         float unit = 1; // 1m --- 1 probe
         Vector3 size = bound.size;
-        float lenx = Mathf.Max(1, Mathf.Floor((size.x + 0.5f) / unit));
-        float leny = Mathf.Max(1, Mathf.Floor((size.y + 0.5f) / unit));
-        float lenz = Mathf.Max(1, Mathf.Floor((size.z + 0.5f) / unit));
+        int lenx = (int)Mathf.Floor(Mathf.Max(1, Mathf.Floor((size.x + 0.5f) / unit)));
+        int leny = (int)Mathf.Floor(Mathf.Max(1, Mathf.Floor((size.y + 0.5f) / unit)));
+        int lenz = (int)Mathf.Floor(Mathf.Max(1, Mathf.Floor((size.z + 0.5f) / unit)));
 
         pos_list = new List<Vector3>();
 
@@ -42,7 +50,13 @@ public class ucGIVolume
 
         //CreateProbeVisualization(pos_list.ToArray());
 
-        return pos_list;
+        VolumeData ret = new VolumeData();
+        ret.pos = pos_list;
+        ret.lenx = lenx;
+        ret.leny = leny;
+        ret.lenz = lenz;
+
+        return ret;
     }
 
     unsafe static public void CreateProbeVisualization(GIVolumeSHData[] shdata)

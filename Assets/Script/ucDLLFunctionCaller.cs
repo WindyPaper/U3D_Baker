@@ -868,10 +868,24 @@ public class ucDLLFunctionCaller
         //debug_pos_list = pos;
         //ucCreatePlaneVisualization.CreatePlaneVisualization(grid_size, pos.ToArray(), normal.ToArray(), diff.ToArray());
 
-        //ucGIVolume.CreateProbeVisualization(shdatas);
+        ucGIVolume.CreateProbeVisualization(shdatas);
 
         //create 3d texture
-        ucCreate3DTexture.CreateSH3DTexture(volume_data.lenx, volume_data.leny, volume_data.lenz, shdatas, "GIVolume");
+        SHTexture3D texs = ucCreate3DTexture.CreateSH3DTexture(volume_data.lenx, volume_data.leny, volume_data.lenz, shdatas, "GIVolume");
+
+        GameObject gi_volume = GameObject.Find("GIVolume");
+        GameObject dy_obj = GameObject.Find("Dynamic");
+        Material mat = dy_obj.GetComponent<Renderer>().sharedMaterial;
+        Matrix4x4 local2W_not_scale = gi_volume.transform.localToWorldMatrix;
+        Vector3 m_scale = local2W_not_scale.lossyScale;
+        local2W_not_scale = local2W_not_scale * Matrix4x4.Scale(new Vector3(1.0f/ m_scale.x, 1.0f / m_scale.y, 1.0f/ m_scale.z));
+        mat.SetMatrix("_InvGIVolumeWMatrix", local2W_not_scale.inverse);
+        mat.SetFloat("_lenx", volume_data.lenx / 2.0f);
+        mat.SetFloat("_leny", volume_data.leny / 2.0f); 
+        mat.SetFloat("_lenz", volume_data.lenz / 2.0f);
+        mat.SetTexture("_GITexR", texs.shr);
+        mat.SetTexture("_GITexG", texs.shg);
+        mat.SetTexture("_GITexB", texs.shb);
     }
 
     unsafe public void StartDebugDirectionalData()

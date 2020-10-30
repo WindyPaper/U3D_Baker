@@ -34,11 +34,11 @@ public class ucGIVolume
 
         pos_list = new List<Vector3>();
 
-        for(int i = 0; i < lenx; ++i)
+        for (int k = 0; k < lenz; ++k)
         {
             for(int j = 0; j < leny; ++j)
             {
-                for(int k = 0; k < lenz; ++k)
+                for (int i = 0; i < lenx; ++i) 
                 {
                     float x = i * unit;
                     float y = j * unit;

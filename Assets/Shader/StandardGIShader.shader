@@ -98,10 +98,10 @@ Shader "GI/StandardGIShader"
                 o.uv = TRANSFORM_TEX(v.uv, _MainTex);
                 //UNITY_TRANSFER_FOG(o,o.vertex);
 
-				o.normal = v.normal;
+				o.normal = UnityObjectToWorldNormal(v.normal);
 				float4 worldPos = mul(unity_ObjectToWorld, v.vertex);
 				o.sh_uv = mul(_InvGIVolumeWMatrix, worldPos).xyz;
-				o.sh_uv = float3(o.sh_uv.x / _lenx, o.sh_uv.y / _leny, o.sh_uv.z / _lenz) * 0.5f + float3(0.5f, 0.5f, 0.5f);
+				o.sh_uv = float3((o.sh_uv.x + 0.25f) / _lenx, (o.sh_uv.y + 0.25f) / _leny, (o.sh_uv.z + 0.25f) / _lenz) * 0.5f + float3(0.5f, 0.5f, 0.5f);
 
                 return o;
             }

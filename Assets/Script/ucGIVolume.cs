@@ -9,6 +9,8 @@ public struct VolumeData
     public int lenx;
     public int leny;
     public int lenz;
+    public Vector3 min_bbox;
+    public float lenUnit;
 }
 
 public class ucGIVolume
@@ -26,7 +28,7 @@ public class ucGIVolume
         //Vector3 max = bound.max;
         Vector3 min = bound.min;
 
-        float unit = 1; // 1m --- 1 probe
+        float unit = 0.5f; // 1m --- 1 probe
         Vector3 size = bound.size;
         int lenx = (int)Mathf.Floor(Mathf.Max(1, Mathf.Floor((size.x + 0.5f) / unit)));
         int leny = (int)Mathf.Floor(Mathf.Max(1, Mathf.Floor((size.y + 0.5f) / unit)));
@@ -55,6 +57,8 @@ public class ucGIVolume
         ret.lenx = lenx;
         ret.leny = leny;
         ret.lenz = lenz;
+        ret.min_bbox = min;
+        ret.lenUnit = unit;
 
         return ret;
     }
@@ -77,7 +81,7 @@ public class ucGIVolume
             //float[] pos_safe_array = ucExportLightProbe.FixedFloatArrayToSafeArray(shdata[i].pos, 3);
             sphere.transform.position = ucCoordToUnity.F3(new Vector3(shdata[i].pos[0]/100.0f, shdata[i].pos[1] / 100.0f, shdata[i].pos[2] / 100.0f));
             //Debug.LogFormat("pos = ({0}, {1}, {2})", sphere.transform.position.x, sphere.transform.position.y, sphere.transform.position.z);
-            float scale_factor = 0.3f;
+            float scale_factor = 0.1f;
             sphere.transform.localScale = new Vector3(scale_factor, scale_factor, scale_factor);
             //plane.transform.rotation = Quaternion.FromToRotation(Vector3.up, ucCoordToUnity.F3(normals[i].normalized));
             //plane.transform.LookAt(ucCoordToUnity.F3(normals[i]));
